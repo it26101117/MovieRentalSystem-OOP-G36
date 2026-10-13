@@ -9,9 +9,9 @@
     <modelVersion>4.0.0</modelVersion>
 
 
-    <!-- =====================================================
+    <!--
          SPRING BOOT PARENT
-    ====================================================== -->
+     -->
 
     <parent>
 
@@ -32,9 +32,9 @@
     </parent>
 
 
-    <!-- =====================================================
+    <!--
          PROJECT INFORMATION
-    ====================================================== -->
+     -->
 
     <groupId>
         com.movierental
@@ -65,9 +65,7 @@
     </packaging>
 
 
-    <!-- =====================================================
-         JAVA / ENCODING
-    ====================================================== -->
+    <!-- JAVA / ENCODING-->
 
     <properties>
 
@@ -87,23 +85,10 @@
     </properties>
 
 
-    <!-- =====================================================
-         DEPENDENCIES
-    ====================================================== -->
+
+    <!--DEPENDENCIES-->
 
     <dependencies>
-
-
-        <!-- =================================================
-             SPRING BOOT WEB
-
-             Includes:
-             - Spring MVC
-             - Jakarta Servlet API
-             - Embedded Tomcat
-             - Web application support
-        ================================================== -->
-
         <dependency>
 
             <groupId>
@@ -115,14 +100,6 @@
             </artifactId>
 
         </dependency>
-
-
-        <!-- =================================================
-             JSP SUPPORT
-
-             Required so embedded Tomcat can compile and
-             display .jsp files.
-        ================================================== -->
 
         <dependency>
 
@@ -136,12 +113,7 @@
 
         </dependency>
 
-
-        <!-- =================================================
-             SPRING BOOT TESTING
-
-             Useful later for unit/integration testing.
-        ================================================== -->
+        <!--SPRING BOOT TESTING-->
 
         <dependency>
 
@@ -159,16 +131,10 @@
 
         </dependency>
 
-
     </dependencies>
 
 
-    <!-- =====================================================
-         BUILD
-    ====================================================== -->
-
     <build>
-
 
         <!-- Generated WAR name -->
 
@@ -176,18 +142,9 @@
             MovieRentalPlatform
         </finalName>
 
-
         <plugins>
 
-
-            <!-- =============================================
-                 SPRING BOOT MAVEN PLUGIN
-
-                 Allows:
-                 mvn spring-boot:run
-
-                 and creates Spring Boot executable WAR.
-            ============================================== -->
+            <!-- SPRING BOOT MAVEN PLUGIN -->
 
             <plugin>
 
@@ -201,13 +158,8 @@
 
             </plugin>
 
-
-            <!-- =============================================
-                 JAVA COMPILER
-            ============================================== -->
-
+            <!-- JAVA COMPILER-->
             <plugin>
-
                 <groupId>
                     org.apache.maven.plugins
                 </groupId>
@@ -226,10 +178,8 @@
 
             </plugin>
 
-
         </plugins>
 
     </build>
-
 
 </project>
