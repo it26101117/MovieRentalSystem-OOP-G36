@@ -9,7 +9,6 @@ public class Movie {
     private double rating;
     private int availableCopies;
     private String description;
-
     public Movie() {
     }
     public Movie(String movieId,String title, String genre,int releaseYear,double rentalPrice, double rating,int availableCopies,String description){
