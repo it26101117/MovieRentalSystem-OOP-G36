@@ -201,7 +201,6 @@ public class RentalServlet extends HttpServlet {
             return;
         }
 
-
         // PREVENT DUPLICATE ACTIVE RENTAL
 
         boolean alreadyRented = rentalService.hasActiveRental(userId, movieId);
@@ -212,8 +211,6 @@ public class RentalServlet extends HttpServlet {
 
             return;
         }
-
-
 
         // GENERATE RENTAL ID
 
@@ -237,14 +234,9 @@ public class RentalServlet extends HttpServlet {
 
         movieService.updateMovie(movie);
 
-
-
         // REDIRECT TO MY RENTALS
-
         response.sendRedirect(request.getContextPath() + "/rentals");
     }
-
-
 
     // RETURN MOVIE
 
@@ -261,9 +253,7 @@ public class RentalServlet extends HttpServlet {
             return;
         }
 
-
         Rental rental = rentalService.getRentalById(rentalId);
-
 
         // RENTAL NOT FOUND
 
@@ -274,7 +264,6 @@ public class RentalServlet extends HttpServlet {
             return;
         }
 
-
         // VERIFY RENTAL OWNER
 
         if (!userId.equals(rental.getUserId())) {
@@ -284,9 +273,7 @@ public class RentalServlet extends HttpServlet {
             return;
         }
 
-
         // PREVENT DOUBLE RETURN
-
 
         if (!"RENTED".equalsIgnoreCase(rental.getStatus())) {
 
@@ -295,15 +282,11 @@ public class RentalServlet extends HttpServlet {
             return;
         }
 
-
-
         // UPDATE RENTAL STATUS
 
         rental.setStatus("RETURNED");
 
-
         rental.setReturnDate(LocalDate.now().toString());
-
 
         rentalService.updateRental(rental);
 
@@ -328,7 +311,6 @@ public class RentalServlet extends HttpServlet {
 
 
         // REDIRECT
-
         response.sendRedirect(request.getContextPath() + "/rentals");
     }
 }
