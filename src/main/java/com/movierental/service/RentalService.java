@@ -41,7 +41,6 @@ public class RentalService {
     public List<Rental> getRentalsByUser(String userId) throws IOException {
 
         List<Rental> result = new ArrayList<>();
-
         List<Rental> rentals = getAllRentals();
 
         for (Rental rental : rentals) {
