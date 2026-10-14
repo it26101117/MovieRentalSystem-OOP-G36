@@ -830,9 +830,6 @@ public class AdminReviewServlet extends HttpServlet {
         }
 
 
-        // =====================================================
-        // ROLE CHECK
-        // =====================================================
 
         String role =
                 (String)
@@ -853,10 +850,8 @@ public class AdminReviewServlet extends HttpServlet {
                     request.getContextPath()
                             + "/catalog"
             );
-
             return false;
         }
-
 
         return true;
     }
