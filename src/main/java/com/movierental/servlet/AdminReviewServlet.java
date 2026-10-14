@@ -31,144 +31,75 @@ public class AdminReviewServlet extends HttpServlet {
     private UserService userService;
 
 
-    // =========================================================
-    // INITIALIZATION
-    // =========================================================
+
 
     @Override
     public void init() throws ServletException {
 
         try {
 
-            String reviewFilePath =
-                    DataPathUtil.getFilePath(
-                            "reviews.txt"
-                    );
+            String reviewFilePath = DataPathUtil.getFilePath("reviews.txt" );
 
-            String movieFilePath =
-                    DataPathUtil.getFilePath(
-                            "movies.txt"
-                    );
+            String movieFilePath = DataPathUtil.getFilePath("movies.txt" );
 
-            String userFilePath =
-                    DataPathUtil.getFilePath(
-                            "users.txt"
-                    );
+            String userFilePath = DataPathUtil.getFilePath("users.txt" );
 
+            reviewService = new ReviewService(  reviewFilePath );
 
-            reviewService =
-                    new ReviewService(
-                            reviewFilePath
-                    );
+            movieService = new MovieService(movieFilePath);
 
-            movieService =
-                    new MovieService(
-                            movieFilePath
-                    );
+            userService =new UserService( userFilePath  );
 
-            userService =
-                    new UserService(
-                            userFilePath
-                    );
+            System.out.println("AdminReviewServlet reviews file: " + reviewFilePath );
 
+            System.out.println("AdminReviewServlet movies file: " + movieFilePath  );
 
-            System.out.println(
-                    "AdminReviewServlet reviews file: "
-                            + reviewFilePath
-            );
+            System.out.println( "AdminReviewServlet users file: " + userFilePath );
 
-            System.out.println(
-                    "AdminReviewServlet movies file: "
-                            + movieFilePath
-            );
-
-            System.out.println(
-                    "AdminReviewServlet users file: "
-                            + userFilePath
-            );
-
-        } catch (Exception e) {
-
+        }
+        catch (Exception e) {
             throw new ServletException(
-                    "Failed to initialize AdminReviewServlet",
-                    e
-            );
+                    "Failed to initialize AdminReviewServlet", e   );
+
+
         }
     }
 
 
-    // =========================================================
-    // GET
-    // =========================================================
 
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException
+    {
+         HttpSession session = request.getSession(false);
 
-        HttpSession session =
-                request.getSession(false);
+         if (!checkAdminAccess( session,  request,  response)
 
-
-        // =====================================================
-        // ADMIN SECURITY CHECK
-        // =====================================================
-
-        if (
-                !checkAdminAccess(
-                        session,
-                        request,
-                        response
-                )
-        ) {
+         ) {
 
             return;
         }
 
 
-        // =====================================================
-        // LOAD DATA
-        // =====================================================
-
-        List<Review> allReviews =
-                reviewService
-                        .getAllReviews();
 
 
-        List<User> users =
-                userService
-                        .getAllUsers();
+         List<Review> allReviews =   reviewService.getAllReviews();
 
+         List<User> users =userService.getAllUsers();
 
-        List<Movie> movies =
-                movieService
-                        .getAllMovies();
+         List<Movie> movies = movieService  .getAllMovies();
 
+         Map<String, User> userMap = new HashMap<>();
 
-        // =====================================================
-        // USER LOOKUP MAP
-        // =====================================================
+         for (User user : users) {
 
-        Map<String, User> userMap =
-                new HashMap<>();
-
-
-        for (User user : users) {
-
-            userMap.put(
-                    user.getUserId(),
+            userMap.put( user.getUserId(),
                     user
             );
         }
 
+         Map<String, Movie> movieMap = new HashMap<>();
 
-        // =====================================================
-        // MOVIE LOOKUP MAP
-        // =====================================================
-
-        Map<String, Movie> movieMap =
-                new HashMap<>();
 
 
         for (Movie movie : movies) {
