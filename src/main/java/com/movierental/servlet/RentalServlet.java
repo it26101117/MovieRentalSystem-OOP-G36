@@ -25,368 +25,168 @@ public class RentalServlet extends HttpServlet {
     private MovieService movieService;
     private WatchHistoryService watchHistoryService;
 
-
-
     // INITIALIZATION
-
 
     @Override
     public void init() throws ServletException {
 
         try {
 
-            String rentalFilePath =
-                    DataPathUtil.getFilePath(
-                            "rentals.txt"
-                    );
+            String rentalFilePath = DataPathUtil.getFilePath("rentals.txt");
 
-            String movieFilePath =
-                    DataPathUtil.getFilePath(
-                            "movies.txt"
-                    );
+            String movieFilePath = DataPathUtil.getFilePath("movies.txt");
 
-            String watchHistoryFilePath =
-                    DataPathUtil.getFilePath(
-                            "watch_history.txt"
-                    );
+            String watchHistoryFilePath = DataPathUtil.getFilePath("watch_history.txt");
 
 
-            rentalService =
-                    new RentalService(
-                            rentalFilePath
-                    );
+            rentalService = new RentalService(rentalFilePath);
+
+            movieService = new MovieService(movieFilePath);
+
+            watchHistoryService = new WatchHistoryService(watchHistoryFilePath, movieService);
 
 
-            movieService =
-                    new MovieService(
-                            movieFilePath
-                    );
+            System.out.println("RentalServlet rentals file: " + rentalFilePath);
 
+            System.out.println("RentalServlet movies file: " + movieFilePath);
 
-            watchHistoryService =
-                    new WatchHistoryService(
-                            watchHistoryFilePath,
-                            movieService
-                    );
-
-
-            System.out.println(
-                    "RentalServlet rentals file: "
-                            + rentalFilePath
-            );
-
-            System.out.println(
-                    "RentalServlet movies file: "
-                            + movieFilePath
-            );
-
-            System.out.println(
-                    "RentalServlet watch history file: "
-                            + watchHistoryFilePath
-            );
+            System.out.println("RentalServlet watch history file: " + watchHistoryFilePath);
 
         } catch (Exception e) {
-
-            throw new ServletException(
-                    "Failed to initialize RentalServlet",
-                    e
-            );
+            throw new ServletException("Failed to initialize RentalServlet", e);
         }
     }
 
-
-
     // GET - SHOW CUSTOMER RENTALS
 
-
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        HttpSession session =
-                request.getSession(false);
-
+        HttpSession session = request.getSession(false);
 
 
         // LOGIN CHECK
 
+        if (session == null || session.getAttribute("loggedUser") == null) {
 
-        if (
-                session == null
-                        ||
-                        session.getAttribute(
-                                "loggedUser"
-                        ) == null
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/login"
-            );
+            response.sendRedirect(request.getContextPath() + "/login");
 
             return;
         }
-
 
 
         // CUSTOMER ACCESS ONLY
 
+        String role = (String) session.getAttribute("role");
 
-        String role =
-                (String)
-                        session.getAttribute(
-                                "role"
-                        );
-
-
-        if (
-                !"CUSTOMER"
-                        .equalsIgnoreCase(role)
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/admin"
-            );
-
+        if (!"CUSTOMER".equalsIgnoreCase(role)) {
+            response.sendRedirect(request.getContextPath() + "/admin");
             return;
         }
 
-
-        String userId =
-                (String)
-                        session.getAttribute(
-                                "userId"
-                        );
-
+        String userId = (String) session.getAttribute("userId");
 
         if (userId == null) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/login"
-            );
-
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
-
 
 
         // GET CUSTOMER RENTALS
 
+        List<Rental> rentals = rentalService.getRentalsByUser(userId);
 
-        List<Rental> rentals =
-                rentalService
-                        .getRentalsByUser(
-                                userId
-                        );
+        request.setAttribute("rentals", rentals);
 
+        request.setAttribute("movieService", movieService);
 
-        request.setAttribute(
-                "rentals",
-                rentals
-        );
-
-
-        request.setAttribute(
-                "movieService",
-                movieService
-        );
-
-
-        request.getRequestDispatcher(
-                "/WEB-INF/views/my-rentals.jsp"
-        ).forward(
-                request,
-                response
-        );
+        request.getRequestDispatcher("/WEB-INF/views/my-rentals.jsp").forward(request, response);
     }
-
 
 
     // POST - RENT OR RETURN
 
-
     @Override
-    protected void doPost(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {request.setCharacterEncoding("UTF-8");
 
-        request.setCharacterEncoding(
-                "UTF-8"
-        );
-
-
-        HttpSession session =
-                request.getSession(false);
+        HttpSession session = request.getSession(false);
 
 
         // LOGIN CHECK
 
+        if (session == null || session.getAttribute("loggedUser") == null) {
 
-        if (
-                session == null
-                        ||
-                        session.getAttribute(
-                                "loggedUser"
-                        ) == null
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/login"
-            );
+            response.sendRedirect(request.getContextPath() + "/login");
 
             return;
         }
-
 
 
         // CUSTOMER ACCESS ONLY
 
+        String role = (String) session.getAttribute("role");
 
-        String role =
-                (String)
-                        session.getAttribute(
-                                "role"
-                        );
+        if (!"CUSTOMER".equalsIgnoreCase(role)) {
 
-
-        if (
-                !"CUSTOMER"
-                        .equalsIgnoreCase(role)
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/admin"
-            );
+            response.sendRedirect(request.getContextPath() + "/admin");
 
             return;
         }
 
+        String userId = (String) session.getAttribute("userId");
 
-        String userId =
-                (String)
-                        session.getAttribute(
-                                "userId"
-                        );
-
-
-        if (userId == null) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/login"
-            );
+        if (userId == null) {response.sendRedirect(request.getContextPath() + "/login");
 
             return;
         }
 
-
-        String action =
-                request.getParameter(
-                        "action"
-                );
-
+        String action = request.getParameter("action");
 
 
         // RENT
 
-
-        if (
-                "rent"
-                        .equalsIgnoreCase(action)
-        ) {
-
-            rentMovie(
-                    request,
-                    response,
-                    userId
-            );
+        if ("rent".equalsIgnoreCase(action)) {rentMovie(request, response, userId);
 
         }
-
 
         // RETURN
 
+        else if ("return".equalsIgnoreCase(action)) {
 
-        else if (
-                "return"
-                        .equalsIgnoreCase(action)
-        ) {
-
-            returnMovie(
-                    request,
-                    response,
-                    userId
-            );
+            returnMovie(request, response, userId);
 
         }
-
-
 
         // INVALID ACTION
 
         else {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/rentals"
-            );
+            response.sendRedirect(request.getContextPath()+ "/rentals");
         }
     }
 
 
-
     // RENT MOVIE
 
+    private void rentMovie(HttpServletRequest request, HttpServletResponse response, String userId) throws IOException {
 
-    private void rentMovie(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            String userId
-    ) throws IOException {
-
-        String movieId =
-                request.getParameter(
-                        "movieId"
-                );
+        String movieId = request.getParameter("movieId");
 
 
         // Movie ID missing
-        if (
-                movieId == null
-                        ||
-                        movieId.trim().isEmpty()
-        ) {
+        if (movieId == null || movieId.trim().isEmpty()) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/catalog?error=notfound"
-            );
+            response.sendRedirect(request.getContextPath() + "/catalog?error=notfound");
 
             return;
         }
 
 
-        Movie movie =
-                movieService
-                        .getMovieById(
-                                movieId
-                        );
+        Movie movie = movieService.getMovieById(movieId);
 
 
         // Movie doesn't exist
         if (movie == null) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/catalog?error=notfound"
-            );
+            response.sendRedirect(request.getContextPath() + "/catalog?error=notfound");
 
             return;
         }
@@ -394,16 +194,9 @@ public class RentalServlet extends HttpServlet {
 
         // CHECK AVAILABLE COPIES
 
+        if (movie.getAvailableCopies() <= 0) {
 
-        if (
-                movie.getAvailableCopies()
-                        <= 0
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/catalog?error=unavailable"
-            );
+            response.sendRedirect(request.getContextPath() + "/catalog?error=unavailable");
 
             return;
         }
@@ -411,21 +204,11 @@ public class RentalServlet extends HttpServlet {
 
         // PREVENT DUPLICATE ACTIVE RENTAL
 
-
-        boolean alreadyRented =
-                rentalService
-                        .hasActiveRental(
-                                userId,
-                                movieId
-                        );
-
+        boolean alreadyRented = rentalService.hasActiveRental(userId, movieId);
 
         if (alreadyRented) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/catalog?error=alreadyrented"
-            );
+            response.sendRedirect(request.getContextPath() + "/catalog?error=alreadyrented");
 
             return;
         }
@@ -434,133 +217,69 @@ public class RentalServlet extends HttpServlet {
 
         // GENERATE RENTAL ID
 
-
-        String rentalId =
-                rentalService
-                        .generateNextRentalId();
-
+        String rentalId = rentalService.generateNextRentalId();
 
 
         // CREATE RENTAL OBJECT
 
-
-        Rental rental =
-                new Rental(
-                        rentalId,
-                        userId,
-                        movieId,
-                        LocalDate.now()
-                                .toString(),
-                        "",
-                        "RENTED"
-                );
-
+        Rental rental = new Rental(rentalId, userId, movieId, LocalDate.now().toString(), "", "RENTED");
 
 
         // SAVE RENTAL
 
-
-        rentalService
-                .addRental(
-                        rental
-                );
-
+        rentalService.addRental(rental);
 
 
         // REDUCE MOVIE COPIES
 
-
-        movie.setAvailableCopies(
-                movie.getAvailableCopies()
-                        - 1
-        );
+        movie.setAvailableCopies(movie.getAvailableCopies() - 1);
 
 
-        movieService
-                .updateMovie(
-                        movie
-                );
+        movieService.updateMovie(movie);
 
 
 
         // REDIRECT TO MY RENTALS
 
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/rentals"
-        );
+        response.sendRedirect(request.getContextPath() + "/rentals");
     }
 
 
 
     // RETURN MOVIE
 
+    private void returnMovie(HttpServletRequest request, HttpServletResponse response, String userId) throws IOException {
 
-    private void returnMovie(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            String userId
-    ) throws IOException {
-
-        String rentalId =
-                request.getParameter(
-                        "rentalId"
-                );
+        String rentalId = request.getParameter("rentalId");
 
 
         // Rental ID missing
-        if (
-                rentalId == null
-                        ||
-                        rentalId.trim().isEmpty()
-        ) {
+        if (rentalId == null || rentalId.trim().isEmpty()) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/rentals"
-            );
+            response.sendRedirect(request.getContextPath() + "/rentals");
 
             return;
         }
 
 
-        Rental rental =
-                rentalService
-                        .getRentalById(
-                                rentalId
-                        );
-
+        Rental rental = rentalService.getRentalById(rentalId);
 
 
         // RENTAL NOT FOUND
 
-
         if (rental == null) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/rentals"
-            );
+            response.sendRedirect(request.getContextPath() + "/rentals");
 
             return;
         }
 
 
-
         // VERIFY RENTAL OWNER
 
+        if (!userId.equals(rental.getUserId())) {
 
-        if (
-                !userId.equals(
-                        rental.getUserId()
-                )
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/rentals"
-            );
+            response.sendRedirect(request.getContextPath() + "/rentals");
 
             return;
         }
@@ -569,17 +288,9 @@ public class RentalServlet extends HttpServlet {
         // PREVENT DOUBLE RETURN
 
 
-        if (
-                !"RENTED"
-                        .equalsIgnoreCase(
-                                rental.getStatus()
-                        )
-        ) {
+        if (!"RENTED".equalsIgnoreCase(rental.getStatus())) {
 
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/rentals"
-            );
+            response.sendRedirect(request.getContextPath() + "/rentals");
 
             return;
         }
@@ -588,68 +299,36 @@ public class RentalServlet extends HttpServlet {
 
         // UPDATE RENTAL STATUS
 
-
-        rental.setStatus(
-                "RETURNED"
-        );
+        rental.setStatus("RETURNED");
 
 
-        rental.setReturnDate(
-                LocalDate.now()
-                        .toString()
-        );
+        rental.setReturnDate(LocalDate.now().toString());
 
 
-        rentalService
-                .updateRental(
-                        rental
-                );
-
+        rentalService.updateRental(rental);
 
 
         // INCREASE AVAILABLE MOVIE COPIES
 
-
-        Movie movie =
-                movieService
-                        .getMovieById(
-                                rental.getMovieId()
-                        );
+        Movie movie = movieService.getMovieById(rental.getMovieId());
 
 
         if (movie != null) {
 
-            movie.setAvailableCopies(
-                    movie.getAvailableCopies()
-                            + 1
-            );
+            movie.setAvailableCopies(movie.getAvailableCopies() + 1);
 
 
-            movieService
-                    .updateMovie(
-                            movie
-                    );
+            movieService.updateMovie(movie);
         }
-
 
 
         // RECORD RECENTLY WATCHED
 
-
-        watchHistoryService
-                .recordWatchedMovie(
-                        userId,
-                        rental.getMovieId()
-                );
-
+        watchHistoryService.recordWatchedMovie(userId, rental.getMovieId());
 
 
         // REDIRECT
 
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/rentals"
-        );
+        response.sendRedirect(request.getContextPath() + "/rentals");
     }
 }
