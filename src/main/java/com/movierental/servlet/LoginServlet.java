@@ -15,7 +15,6 @@ import java.io.IOException;
 
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
-
     private UserService userService;
 
     @Override
@@ -24,42 +23,36 @@ public class LoginServlet extends HttpServlet {
         try {
 
             String filePath =DataPathUtil.getFilePath("users.txt");
-
             userService =new UserService(filePath);
 
             System.out.println("LoginServlet users file: " + filePath);
 
         } catch (Exception e) {
-
             throw new ServletException("Failed to initialize LoginServlet", e);
         }
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
         HttpSession session = request.getSession(false);
 
-        // If already logged in, redirect based on role
+        // If fully logging, redirect based on role
         if (session != null && session.getAttribute("loggedUser") != null) {
-
             String role = (String) session.getAttribute("role");
 
             if ("ADMIN".equalsIgnoreCase(role)) {
-
                 response.sendRedirect(request.getContextPath() + "/admin");
-
             } else {
-
                 response.sendRedirect(request.getContextPath() + "/catalog");
             }
-
             return;
         }
+
 
         // Show login page
         request.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(request,response);
     }
+
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -72,7 +65,8 @@ public class LoginServlet extends HttpServlet {
 
         User user = userService.login(email, password);
 
-        // Invalid login
+
+
         if (user == null) {
 
             request.setAttribute("error", "Invalid email or password.");
@@ -92,6 +86,7 @@ public class LoginServlet extends HttpServlet {
         session.setAttribute("userName", user.getName());
 
         session.setAttribute("role", user.getRole());
+
 
         // Admin
         if ("ADMIN".equalsIgnoreCase(user.getRole())) {
