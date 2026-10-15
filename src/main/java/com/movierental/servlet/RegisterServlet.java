@@ -14,7 +14,6 @@ import java.io.IOException;
 
 @WebServlet("/register")
 public class RegisterServlet extends HttpServlet {
-
     private UserService userService;
 
     @Override
@@ -23,13 +22,10 @@ public class RegisterServlet extends HttpServlet {
         try {
 
             String filePath =DataPathUtil.getFilePath("users.txt");
-
             userService =new UserService(filePath);
-
             System.out.println("RegisterServlet users file: "+ filePath);
 
         } catch (Exception e) {
-
             throw new ServletException("Failed to initialize RegisterServlet",e);
         }
     }
@@ -55,11 +51,9 @@ public class RegisterServlet extends HttpServlet {
 
         String phone =request.getParameter("phone");
 
-
         String userId =userService.generateNextUserId();
 
         Customer customer =new Customer(userId,name,email,password,phone);
-
 
         boolean registered =userService.registerCustomer(customer);
 
@@ -71,7 +65,6 @@ public class RegisterServlet extends HttpServlet {
 
             return;
         }
-
         response.sendRedirect(request.getContextPath()+ "/login?registered=true");
     }
 }
