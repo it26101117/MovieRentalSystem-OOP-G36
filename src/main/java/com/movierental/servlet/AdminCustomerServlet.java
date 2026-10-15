@@ -57,10 +57,10 @@ public class AdminCustomerServlet extends HttpServlet {
             return;
         }
 
-        // GET ALL USERS
+        // get all users
         List<User> allUsers = userService.getAllUsers();
 
-        // FILTER CUSTOMER USERS
+        // filter customer users
         List<Customer> customers = new ArrayList<>();
 
 
@@ -70,7 +70,7 @@ public class AdminCustomerServlet extends HttpServlet {
             }
         }
 
-        // SEARCH
+
         String search = request.getParameter("search");
 
         if (search != null && !search.trim().isEmpty()) {
@@ -97,7 +97,7 @@ public class AdminCustomerServlet extends HttpServlet {
             customers = filteredCustomers;
         }
 
-        // SEND DATA TO JSP
+        // sent data to jsp
         request.setAttribute("customers", customers);
 
         request.setAttribute("customerCount", customers.size() );
