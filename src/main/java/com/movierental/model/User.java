@@ -1,7 +1,6 @@
 package com.movierental.model;
 
 public abstract class User {
-
     private String userId;
     private String name;
     private String email;
@@ -47,8 +46,8 @@ public abstract class User {
 
     public void setPassword(String password) {
         this.password = password;
-    }
 
+    }
     public abstract String getRole();
 }
 
