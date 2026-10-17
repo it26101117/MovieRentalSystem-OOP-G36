@@ -1,417 +1,190 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-
-<%@ page import="com.movierental.util.HtmlUtil" %>
+<%@ page contentType="text/html;charset=UTF-8" %>
 
 <%
     String error = (String) request.getAttribute("error");
 
-
-    boolean registered ="true".equalsIgnoreCase(request.getParameter("registered"));
-
-
-    String currentRole = (String) session.getAttribute("role");
-
-
-    String currentUser = (String) session.getAttribute("userName");
-
-
-    // Extra protection if JSP is directly reached
-    if (currentUser != null && currentRole != null) {
-
-        if ("ADMIN".equalsIgnoreCase(currentRole)) {
-
-            response.sendRedirect(request.getContextPath() + "/admin");
-
-        } else {
-            response.sendRedirect(request.getContextPath() + "/catalog");
-        }
-
-        return;
-    }
+    boolean registered = "true".equalsIgnoreCase(request.getParameter("registered"));
 %>
 
 <!DOCTYPE html>
 
-<html lang="en">
+<html>
 
 <head>
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
 
     <title>
         Sign In | CineRent
     </title>
 
-
-    <link rel="stylesheet"
-          href="<%= request.getContextPath() %>/css/style.css">
+    <link
+        rel="stylesheet"
+        href="<%= request.getContextPath() %>/css/style.css"
+    >
 
 </head>
-
-
 <body>
 
+<div class="auth-page">
 
-<nav class="navbar">
+    <div class="auth-shell">
 
-    <div class="container navbar-inner">
+        <section class="auth-showcase">
 
+            <a
+                href="<%= request.getContextPath() %>/"
+                class="brand"
+            >
 
-        <a href="<%= request.getContextPath() %>/"
-           class="brand">
-
-            <span class="brand-icon">
-
-                🎬
-
-            </span>
-
-            CineRent
-
-        </a>
-
-
-        <div class="nav-links">
-
-
-            <a href="<%= request.getContextPath() %>/">
-
-                Home
-
-            </a>
-
-
-            <a href="<%= request.getContextPath() %>/register"
-               class="btn btn-primary">
-
-                Create Account
-
-            </a>
-
-
-        </div>
-
-
-    </div>
-
-</nav>
-
-
-<!-- login page -->
-
-<main class="auth-page">
-
-    <div class="container auth-layout">
-
-        <!-- left side -->
-
-        <section class="auth-intro">
-
-
-            <div class="auth-label">
-
-                🎞️ Welcome Back
-
-            </div>
-
-            <h1>
-
-                Your movies are
-
-                <span>
-                    waiting.
+                <span class="brand-mark">
+                    C
                 </span>
 
-            </h1>
+                CineRent
 
+            </a>
+            <div style="position:relative;z-index:3;">
 
-            <p>
+                <span class="auth-label">
+                    Welcome back
+                </span>
 
-                Sign in to browse the CineRent catalogue,
-                manage your active rentals, see recently
-                watched movies and share your ratings.
-
-            </p>
-
-
-            <div class="auth-feature-list">
-
-
-                <div class="auth-feature">
-
-                    <span class="auth-feature-icon">
-
-                        🎬
-
+                <h1>
+                    Continue your
+                    <span class="gradient-text">
+                        movie journey.
                     </span>
-
-                    Browse and rent available movies
-
-                </div>
-
-
-                <div class="auth-feature">
-
-                    <span class="auth-feature-icon">
-
-                        📀
-
-                    </span>
-
-                    Manage rentals and returns
-
-                </div>
-
-
-                <div class="auth-feature">
-
-                    <span class="auth-feature-icon">
-
-                        🕘
-
-                    </span>
-
-                    View your recently watched history
-
-                </div>
-
-
-                <div class="auth-feature">
-
-                    <span class="auth-feature-icon">
-
-                        ⭐
-
-                    </span>
-
-                    Rate and review completed movies
-
-                </div>
-
-
-            </div>
-
-
-        </section>
-
-
-        <!-- login card -->
-
-        <section class="auth-card">
-
-
-            <div class="auth-card-header">
-
-                <h2>
-
-                    Sign in
-
-                </h2>
-
+                </h1>
 
                 <p>
-
-                    Enter your CineRent account details
-                    to continue.
-
+                    Browse titles, manage rentals,
+                    revisit your watch history and
+                    share reviews.
                 </p>
 
             </div>
 
+            <small
+                style="
+                    position:relative;
+                    z-index:3;
+                    color:#8491a3;
+                "
+            >
+                CineRent · Movie Rental Platform
+            </small>
 
-            <!-- register success -->
+        </section>
 
-            <%
-                if (registered) {
-            %>
+        <section class="auth-form-side">
 
+            <h1>
+                Sign in
+            </h1>
 
-            <div class="alert alert-success">
-
-                ✓ Account created successfully.
-                You can now sign in.
-
-            </div>
-
-
-            <%
-                }
-            %>
-
-
-            <!-- login error -->
-
-            <%
-                if (error != null && !error.trim().isEmpty()) {
-            %>
+            <p>
+                Enter your account details.
+            </p>
 
 
-            <div class="alert alert-danger">
+            <% if (registered) { %>
 
-                <%= HtmlUtil.escape(error) %>
+                <div
+                    class="alert alert-success"
+                    data-auto-hide
+                >
+                    Account created successfully.
+                </div>
 
-            </div>
+            <% } %>
+
+            <% if (error != null) { %>
+
+                <div class="alert alert-danger">
+                    <%= error %>
+                </div>
+
+            <% } %>
 
 
-            <%
-                }
-            %>
-
-
-            <!-- login form -->
-
-            <form method="post"
-                  action="<%= request.getContextPath() %>/login">
-
-
-                <!-- email -->
+            <form
+                method="post"
+                action="<%= request.getContextPath() %>/login"
+            >
 
                 <div class="form-group">
 
-                    <label for="email"
-                           class="form-label">
-
-                        Email Address
-
+                    <label class="form-label">
+                        Email address
                     </label>
 
-                    <div class="input-wrapper">
-
-                        <span class="input-icon">
-
-                            ✉
-
-                        </span>
-
-
-                        <input type="email"
-                               id="email"
-                               name="email"
-                               class="form-control with-icon"
-                               placeholder="you@example.com"
-                               autocomplete="email"
-                               required>
-
-
-                    </div>
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control"
+                        placeholder="name@example.com"
+                        required
+                    >
 
                 </div>
 
 
-                <!-- password -->
-
                 <div class="form-group">
 
-
-                    <label for="password"
-                           class="form-label">
-
+                    <label class="form-label">
                         Password
-
                     </label>
 
-
-                    <div class="password-wrapper">
-
-                        <input type="password"
-                               id="password"
-                               name="password"
-                               class="form-control"
-                               placeholder="Enter your password"
-                               autocomplete="current-password"
-                               required>
-
-
-                        <button type="button"
-                                class="password-toggle"
-                                onclick="togglePassword('password', this)">
-
-                            SHOW
-
-                        </button>
-
-
-                    </div>
-
+                    <input
+                        type="password"
+                        name="password"
+                        class="form-control"
+                        placeholder="Enter password"
+                        required
+                    >
 
                 </div>
 
 
-                <!-- login -->
-
-                <button type="submit"
-                        class="btn btn-primary auth-submit">
-
-                    Sign In →
-
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-full"
+                >
+                    Sign In
                 </button>
 
-
             </form>
-
-
-            <div class="auth-divider">
-
-                NEW TO CINERENT?
-
-            </div>
 
 
             <div class="auth-switch">
 
                 Don't have an account?
 
-                <a href="<%= request.getContextPath() %>/register">
-
-                    Create one now
-
+                <a
+                    href="<%= request.getContextPath() %>/register"
+                >
+                    Create one
                 </a>
 
             </div>
 
-
-            <a href="<%= request.getContextPath() %>/"
-               class="back-home">
-
-                ← Back to CineRent
-
-            </a>
-
-
         </section>
-
 
     </div>
 
-</main>
+</div>
 
 
-<script>
-
-    function togglePassword(inputId, button) {
-
-        const input = document.getElementById(inputId);
-
-
-        if (input.type === "password") {
-
-            input.type ="text";
-
-            button.textContent ="HIDE";
-
-        } else {
-
-            input.type ="password";
-
-            button.textContent ="SHOW";
-        }
-    }
-
-</script>
-
+<script
+    src="<%= request.getContextPath() %>/js/app.js"
+    defer
+></script>
 
 </body>
 
