@@ -6,50 +6,9 @@
 <%@ page import="com.movierental.util.HtmlUtil" %>
 
 <%
-    // =========================================================
-    // SESSION / ACCESS CHECK
-    // =========================================================
+    String ctx =
+            request.getContextPath();
 
-    String userName =
-            (String) session.getAttribute(
-                    "userName"
-            );
-
-
-    String role =
-            (String) session.getAttribute(
-                    "role"
-            );
-
-
-    String loggedUserId =
-            (String) session.getAttribute(
-                    "userId"
-            );
-
-
-    if (
-            userName == null
-                    ||
-                    role == null
-                    ||
-                    loggedUserId == null
-                    ||
-                    !"CUSTOMER".equalsIgnoreCase(role)
-    ) {
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/login"
-        );
-
-        return;
-    }
-
-
-    // =========================================================
-    // GET DATA FROM SERVLET
-    // =========================================================
 
     Movie movie =
             (Movie)
@@ -80,14 +39,30 @@
 
 
     boolean canReview =
-            canReviewObject != null
-                    &&
-                    canReviewObject;
+            Boolean.TRUE.equals(
+                    canReviewObject
+            );
 
 
-    // =========================================================
-    // URL MESSAGES
-    // =========================================================
+    String userName =
+            (String)
+                    session.getAttribute(
+                            "userName"
+                    );
+
+
+    String role =
+            (String)
+                    session.getAttribute(
+                            "role"
+                    );
+
+
+    String success =
+            request.getParameter(
+                    "success"
+            );
+
 
     String error =
             request.getParameter(
@@ -95,10 +70,36 @@
             );
 
 
-    String success =
-            request.getParameter(
-                    "success"
-            );
+    // =========================================================
+    // SECURITY
+    // =========================================================
+
+    if (
+            userName == null
+                    ||
+                    role == null
+    ) {
+
+        response.sendRedirect(
+                ctx + "/login"
+        );
+
+        return;
+    }
+
+
+    if (
+            !"CUSTOMER".equalsIgnoreCase(
+                    role
+            )
+    ) {
+
+        response.sendRedirect(
+                ctx + "/admin"
+        );
+
+        return;
+    }
 
 
     // =========================================================
@@ -108,12 +109,46 @@
     if (movie == null) {
 
         response.sendRedirect(
-                request.getContextPath()
-                        + "/catalog"
+                ctx + "/catalog?error=notfound"
         );
 
         return;
     }
+
+
+    // =========================================================
+    // USER INITIAL
+    // =========================================================
+
+    String userInitial =
+            "U";
+
+
+    if (
+            userName != null
+                    &&
+                    !userName.trim().isEmpty()
+    ) {
+
+        userInitial =
+                userName
+                        .trim()
+                        .substring(
+                                0,
+                                1
+                        )
+                        .toUpperCase();
+    }
+
+
+    // =========================================================
+    // REVIEW COUNT
+    // =========================================================
+
+    int reviewCount =
+            reviews == null
+                    ? 0
+                    : reviews.size();
 %>
 
 
@@ -121,187 +156,909 @@
 
 <html lang="en">
 
+
 <head>
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
 
     <title>
         Reviews | CineRent
     </title>
 
 
+    <link
+            rel="stylesheet"
+            href="<%= ctx %>/css/style.css"
+    >
+
+
     <style>
 
-        * {
-            box-sizing: border-box;
-        }
-
+        /* =====================================================
+           PAGE
+        ====================================================== */
 
         body {
             margin: 0;
 
-            font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
+            background:
+                    #050811;
 
-            background: #0f172a;
+            color:
+                    #ffffff;
+        }
 
-            color: white;
+
+        .reviews-page {
+            min-height:
+                    calc(100vh - 75px);
+
+            padding:
+                    45px
+                    0
+                    80px;
+
+            background:
+
+                    radial-gradient(
+                            circle at 80% 10%,
+                            rgba(
+                                    124,
+                                    58,
+                                    237,
+                                    0.16
+                            ),
+                            transparent 30%
+                    ),
+
+                    radial-gradient(
+                            circle at 8% 55%,
+                            rgba(
+                                    37,
+                                    99,
+                                    235,
+                                    0.08
+                            ),
+                            transparent 25%
+                    );
+        }
+
+
+        .reviews-container {
+            width:
+                    92%;
+
+            max-width:
+                    1380px;
+
+            margin:
+                    0 auto;
         }
 
 
         /* =====================================================
-           CONTAINER
+           NAVBAR
         ====================================================== */
 
-        .container {
-            width: 92%;
+        .customer-navbar {
+            position:
+                    sticky;
 
-            max-width: 1050px;
+            top: 0;
 
-            margin: 45px auto;
+            z-index:
+                    1000;
+
+            background:
+                    rgba(
+                            4,
+                            7,
+                            14,
+                            0.90
+                    );
+
+            border-bottom:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.06
+                    );
+
+            backdrop-filter:
+                    blur(18px);
         }
 
 
-        /* =====================================================
-           TOP NAVIGATION
-        ====================================================== */
+        .customer-navbar-inner {
+            width:
+                    92%;
 
-        .top-nav {
-            display: flex;
+            max-width:
+                    1380px;
 
-            justify-content: space-between;
+            min-height:
+                    76px;
 
-            align-items: center;
+            margin:
+                    0 auto;
 
-            gap: 20px;
+            display:
+                    flex;
 
-            margin-bottom: 25px;
+            align-items:
+                    center;
 
-            flex-wrap: wrap;
+            gap:
+                    25px;
         }
 
 
-        .nav-links {
-            display: flex;
+        .customer-brand {
+            display:
+                    flex;
 
-            gap: 16px;
+            align-items:
+                    center;
 
-            flex-wrap: wrap;
+            gap:
+                    10px;
+
+            color:
+                    #ffffff;
+
+            text-decoration:
+                    none;
+
+            font-size:
+                    20px;
+
+            font-weight:
+                    850;
         }
 
 
-        .nav-links a,
-        .back {
-            color: #60a5fa;
+        .customer-brand-icon {
+            width:
+                    40px;
 
-            text-decoration: none;
+            height:
+                    40px;
 
-            font-weight: bold;
+            display:
+                    flex;
 
-            font-size: 14px;
-        }
+            align-items:
+                    center;
 
+            justify-content:
+                    center;
 
-        .nav-links a:hover,
-        .back:hover {
-            text-decoration: underline;
-        }
+            border-radius:
+                    13px;
 
-
-        .logout {
-            color: #f87171 !important;
-        }
-
-
-        /* =====================================================
-           MOVIE HEADER
-        ====================================================== */
-
-        .movie-header {
-            background: #1e293b;
-
-            padding: 26px;
-
-            border-radius: 12px;
-
-            margin-bottom: 25px;
+            background:
+                    linear-gradient(
+                            135deg,
+                            #6d28d9,
+                            #8b5cf6
+                    );
 
             box-shadow:
-                    0 8px 25px
-                    rgba(0, 0, 0, 0.18);
+                    0
+                    8px
+                    25px
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.30
+                    );
         }
 
 
-        .movie-header h1 {
-            margin-top: 0;
+        .customer-nav-links {
+            display:
+                    flex;
 
-            margin-bottom: 10px;
+            align-items:
+                    center;
+
+            gap:
+                    6px;
+
+            margin-left:
+                    auto;
+        }
+
+
+        .customer-nav-link {
+            padding:
+                    9px
+                    12px;
+
+            border-radius:
+                    9px;
+
+            color:
+                    #94a3b8;
+
+            text-decoration:
+                    none;
+
+            font-size:
+                    12px;
+
+            font-weight:
+                    700;
+
+            transition:
+                    0.2s ease;
+        }
+
+
+        .customer-nav-link:hover {
+            color:
+                    #ffffff;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.06
+                    );
+        }
+
+
+        .customer-profile {
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    10px;
+
+            margin-left:
+                    10px;
+        }
+
+
+        .customer-avatar {
+            width:
+                    37px;
+
+            height:
+                    37px;
+
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            border-radius:
+                    50%;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            #8b5cf6,
+                            #3b82f6
+                    );
+
+            font-size:
+                    13px;
+
+            font-weight:
+                    800;
+        }
+
+
+        .customer-profile-name {
+            max-width:
+                    130px;
+
+            overflow:
+                    hidden;
+
+            text-overflow:
+                    ellipsis;
+
+            white-space:
+                    nowrap;
+
+            font-size:
+                    12px;
+
+            font-weight:
+                    700;
+        }
+
+
+        .customer-logout {
+            padding:
+                    8px
+                    12px;
+
+            border-radius:
+                    8px;
+
+            border:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.10
+                    );
+
+            color:
+                    #cbd5e1;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                    );
+
+            text-decoration:
+                    none;
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    700;
+        }
+
+
+        /* =====================================================
+           PAGE HEADER
+        ====================================================== */
+
+        .reviews-header {
+            display:
+                    flex;
+
+            justify-content:
+                    space-between;
+
+            align-items:
+                    flex-end;
+
+            gap:
+                    25px;
+
+            margin-bottom:
+                    28px;
+        }
+
+
+        .reviews-badge {
+            display:
+                    inline-flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    7px;
+
+            margin-bottom:
+                    13px;
+
+            padding:
+                    7px
+                    11px;
+
+            border-radius:
+                    999px;
+
+            color:
+                    #c4b5fd;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.10
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.22
+                    );
+
+            font-size:
+                    10px;
+
+            font-weight:
+                    800;
+
+            text-transform:
+                    uppercase;
+        }
+
+
+        .reviews-title {
+            margin: 0;
+
+            font-size:
+                    clamp(
+                            34px,
+                            4vw,
+                            48px
+                    );
+
+            letter-spacing:
+                    -1.5px;
+        }
+
+
+        .reviews-description {
+            margin:
+                    9px
+                    0
+                    0;
+
+            color:
+                    #94a3b8;
+
+            font-size:
+                    14px;
+
+            line-height:
+                    1.7;
+        }
+
+
+        .back-button {
+            min-height:
+                    43px;
+
+            display:
+                    inline-flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            padding:
+                    0
+                    16px;
+
+            border-radius:
+                    10px;
+
+            color:
+                    #e2e8f0;
+
+            text-decoration:
+                    none;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.09
+                    );
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    750;
+        }
+
+
+        /* =====================================================
+           ALERTS
+        ====================================================== */
+
+        .review-alert {
+            margin-bottom:
+                    18px;
+
+            padding:
+                    14px
+                    16px;
+
+            border-radius:
+                    12px;
+
+            font-size:
+                    12px;
+
+            line-height:
+                    1.6;
+        }
+
+
+        .review-alert.success {
+            color:
+                    #86efac;
+
+            background:
+                    rgba(
+                            34,
+                            197,
+                            94,
+                            0.08
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            34,
+                            197,
+                            94,
+                            0.18
+                    );
+        }
+
+
+        .review-alert.error {
+            color:
+                    #fca5a5;
+
+            background:
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.08
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.18
+                    );
+        }
+
+
+        .review-alert.info {
+            color:
+                    #93c5fd;
+
+            background:
+                    rgba(
+                            59,
+                            130,
+                            246,
+                            0.07
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            59,
+                            130,
+                            246,
+                            0.16
+                    );
+        }
+
+
+        /* =====================================================
+           HERO GRID
+        ====================================================== */
+
+        .review-hero {
+            display:
+                    grid;
+
+            grid-template-columns:
+                    minmax(
+                            0,
+                            1.25fr
+                    )
+                    minmax(
+                            330px,
+                            0.75fr
+                    );
+
+            gap:
+                    20px;
+
+            margin-bottom:
+                    45px;
+        }
+
+
+        /* =====================================================
+           MOVIE CARD
+        ====================================================== */
+
+        .review-movie-card {
+            overflow:
+                    hidden;
+
+            display:
+                    grid;
+
+            grid-template-columns:
+                    250px
+                    minmax(
+                            0,
+                            1fr
+                    );
+
+            min-height:
+                    380px;
+
+            border-radius:
+                    22px;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            rgba(
+                                    27,
+                                    39,
+                                    65,
+                                    0.92
+                            ),
+                            rgba(
+                                    15,
+                                    23,
+                                    42,
+                                    0.78
+                            )
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.11
+                    );
+        }
+
+
+        .review-poster-wrapper {
+            position:
+                    relative;
+
+            min-height:
+                    380px;
+
+            overflow:
+                    hidden;
+        }
+
+
+        .review-poster {
+            width:
+                    100%;
+
+            height:
+                    100%;
+
+            display:
+                    block;
+
+            object-fit:
+                    cover;
+        }
+
+
+        .review-poster-wrapper::after {
+            content: "";
+
+            position:
+                    absolute;
+
+            inset: 0;
+
+            background:
+                    linear-gradient(
+                            to right,
+                            transparent 55%,
+                            rgba(
+                                    24,
+                                    35,
+                                    57,
+                                    0.95
+                            )
+                    );
+        }
+
+
+        .review-movie-content {
+            display:
+                    flex;
+
+            flex-direction:
+                    column;
+
+            justify-content:
+                    center;
+
+            padding:
+                    35px;
+        }
+
+
+        .movie-id {
+            width:
+                    fit-content;
+
+            margin-bottom:
+                    14px;
+
+            padding:
+                    5px
+                    8px;
+
+            border-radius:
+                    7px;
+
+            color:
+                    #94a3b8;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.05
+                    );
+
+            font-size:
+                    9px;
+
+            font-weight:
+                    700;
+        }
+
+
+        .review-movie-title {
+            margin:
+                    0
+                    0
+                    10px;
+
+            font-size:
+                    clamp(
+                            27px,
+                            3vw,
+                            40px
+                    );
+
+            letter-spacing:
+                    -1px;
         }
 
 
         .movie-meta {
-            color: #94a3b8;
+            display:
+                    flex;
 
-            margin-bottom: 12px;
+            align-items:
+                    center;
+
+            flex-wrap:
+                    wrap;
+
+            gap:
+                    8px;
+
+            color:
+                    #94a3b8;
+
+            font-size:
+                    12px;
         }
 
 
         .movie-rating {
-            color: #facc15;
+            color:
+                    #facc15;
 
-            font-weight: bold;
+            font-weight:
+                    750;
+        }
 
-            font-size: 18px;
 
-            margin-bottom: 10px;
+        .genre-badge {
+            display:
+                    inline-flex;
+
+            width:
+                    fit-content;
+
+            margin-top:
+                    16px;
+
+            padding:
+                    6px
+                    10px;
+
+            border-radius:
+                    999px;
+
+            color:
+                    #c4b5fd;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.12
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.20
+                    );
+
+            font-size:
+                    10px;
+
+            font-weight:
+                    700;
         }
 
 
         .movie-description {
-            color: #cbd5e1;
+            max-width:
+                    650px;
 
-            line-height: 1.6;
-        }
+            margin:
+                    19px
+                    0
+                    0;
 
+            color:
+                    #a1adbe;
 
-        /* =====================================================
-           MESSAGES
-        ====================================================== */
+            line-height:
+                    1.75;
 
-        .message {
-            padding: 14px 18px;
-
-            border-radius: 8px;
-
-            margin-bottom: 20px;
-
-            line-height: 1.5;
-        }
-
-
-        .error-message {
-            background: #7f1d1d;
-
-            color: #fecaca;
-        }
-
-
-        .success-message {
-            background: #14532d;
-
-            color: #86efac;
-        }
-
-
-        .info-message {
-            background: #1e3a5f;
-
-            color: #bfdbfe;
+            font-size:
+                    13px;
         }
 
 
@@ -309,267 +1066,546 @@
            REVIEW FORM
         ====================================================== */
 
-        .review-form-box {
-            background: #1e293b;
+        .review-form-card {
+            padding:
+                    28px;
 
-            padding: 26px;
+            border-radius:
+                    22px;
 
-            border-radius: 12px;
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.75
+                    );
 
-            margin-bottom: 35px;
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.10
+                    );
         }
 
 
-        .review-form-box h2 {
-            margin-top: 0;
+        .review-form-card h2 {
+            margin:
+                    0
+                    0
+                    7px;
 
-            margin-bottom: 5px;
+            font-size:
+                    20px;
         }
 
 
-        .form-description {
-            color: #94a3b8;
+        .review-form-description {
+            margin:
+                    0
+                    0
+                    22px;
 
-            margin-top: 0;
+            color:
+                    #64748b;
 
-            margin-bottom: 20px;
+            font-size:
+                    11px;
 
-            font-size: 14px;
+            line-height:
+                    1.6;
         }
 
 
-        label {
-            display: block;
-
-            margin-top: 15px;
-
-            margin-bottom: 7px;
-
-            font-weight: bold;
+        .review-form-group {
+            margin-bottom:
+                    17px;
         }
 
 
-        select,
-        textarea {
-            width: 100%;
+        .review-form-group label {
+            display:
+                    block;
 
-            padding: 12px;
+            margin-bottom:
+                    8px;
 
-            background: #0f172a;
+            color:
+                    #cbd5e1;
 
-            color: white;
+            font-size:
+                    11px;
 
-            border: 1px solid #475569;
-
-            border-radius: 7px;
-
-            font-size: 14px;
+            font-weight:
+                    750;
         }
 
 
-        select:focus,
-        textarea:focus {
-            outline: none;
+        .review-control {
+            width:
+                    100%;
 
-            border-color: #3b82f6;
+            padding:
+                    12px
+                    13px;
+
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.18
+                    );
+
+            border-radius:
+                    10px;
+
+            outline:
+                    none;
+
+            background:
+                    rgba(
+                            15,
+                            23,
+                            42,
+                            0.82
+                    );
+
+            color:
+                    #ffffff;
+
+            font-family:
+                    inherit;
         }
 
 
-        textarea {
-            min-height: 130px;
+        .review-control:focus {
+            border-color:
+                    #8b5cf6;
 
-            resize: vertical;
+            box-shadow:
+                    0
+                    0
+                    0
+                    3px
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.10
+                    );
         }
 
 
-        .character-info {
-            color: #64748b;
+        textarea.review-control {
+            min-height:
+                    130px;
 
-            font-size: 12px;
+            resize:
+                    vertical;
+        }
 
-            margin-top: 6px;
+
+        .review-submit {
+            width:
+                    100%;
+
+            min-height:
+                    43px;
+
+            border:
+                    0;
+
+            border-radius:
+                    10px;
+
+            cursor:
+                    pointer;
+
+            color:
+                    #ffffff;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            #6d28d9,
+                            #8b5cf6
+                    );
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    800;
+        }
+
+
+        .review-delete {
+            width:
+                    100%;
+
+            min-height:
+                    41px;
+
+            margin-top:
+                    9px;
+
+            border-radius:
+                    10px;
+
+            cursor:
+                    pointer;
+
+            color:
+                    #fca5a5;
+
+            border:
+                    1px solid
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.20
+                    );
+
+            background:
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.07
+                    );
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    750;
         }
 
 
         /* =====================================================
-           BUTTONS
+           REVIEWS SECTION
         ====================================================== */
 
-        .button {
-            margin-top: 20px;
+        .reviews-section-header {
+            display:
+                    flex;
 
-            background: #2563eb;
+            justify-content:
+                    space-between;
 
-            color: white;
+            align-items:
+                    center;
 
-            padding: 11px 20px;
+            gap:
+                    20px;
 
-            border: none;
-
-            border-radius: 7px;
-
-            cursor: pointer;
-
-            font-size: 14px;
-
-            font-weight: bold;
+            margin-bottom:
+                    18px;
         }
 
 
-        .button:hover {
-            background: #1d4ed8;
-        }
-
-
-        .delete-button {
-            margin-top: 12px;
-
-            background: #dc2626;
-
-            color: white;
-
-            padding: 10px 16px;
-
-            border: none;
-
-            border-radius: 7px;
-
-            cursor: pointer;
-
-            font-weight: bold;
-        }
-
-
-        .delete-button:hover {
-            background: #b91c1c;
-        }
-
-
-        /* =====================================================
-           CUSTOMER REVIEWS
-        ====================================================== */
-
-        .reviews-heading {
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            gap: 15px;
-
-            margin-bottom: 18px;
-        }
-
-
-        .reviews-heading h2 {
+        .reviews-section-header h2 {
             margin: 0;
+
+            font-size:
+                    22px;
         }
 
 
         .review-count {
-            background: #334155;
+            padding:
+                    6px
+                    10px;
 
-            color: #cbd5e1;
+            border-radius:
+                    999px;
 
-            padding: 6px 10px;
+            color:
+                    #c4b5fd;
 
-            border-radius: 20px;
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.10
+                    );
 
-            font-size: 12px;
+            font-size:
+                    10px;
+
+            font-weight:
+                    750;
         }
 
 
-        .review {
-            background: #1e293b;
+        .review-list {
+            display:
+                    grid;
 
-            padding: 22px;
+            grid-template-columns:
+                    repeat(
+                            2,
+                            minmax(
+                                    0,
+                                    1fr
+                            )
+                    );
 
-            border-radius: 10px;
+            gap:
+                    15px;
+        }
 
-            margin-bottom: 15px;
+
+        .review-card {
+            padding:
+                    21px;
+
+            border-radius:
+                    17px;
+
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.68
+                    );
 
             border:
-                    1px solid transparent;
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.09
+                    );
+
+            transition:
+                    transform
+                    0.2s ease,
+                    border-color
+                    0.2s ease;
         }
 
 
-        .review:hover {
-            border-color: #334155;
+        .review-card:hover {
+            transform:
+                    translateY(-2px);
+
+            border-color:
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.24
+                    );
         }
 
 
-        .review-top {
-            display: flex;
+        .review-card-header {
+            display:
+                    flex;
 
-            justify-content: space-between;
+            justify-content:
+                    space-between;
 
-            gap: 15px;
+            align-items:
+                    center;
 
-            align-items: center;
+            gap:
+                    15px;
 
-            margin-bottom: 12px;
-
-            flex-wrap: wrap;
+            margin-bottom:
+                    15px;
         }
 
 
-        .review-rating {
-            color: #facc15;
+        .review-user {
+            display:
+                    flex;
 
-            font-weight: bold;
+            align-items:
+                    center;
+
+            gap:
+                    10px;
+        }
+
+
+        .review-avatar {
+            width:
+                    36px;
+
+            height:
+                    36px;
+
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            border-radius:
+                    50%;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.14
+                    );
+
+            color:
+                    #c4b5fd;
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    800;
+        }
+
+
+        .review-user-name {
+            color:
+                    #e2e8f0;
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    750;
+        }
+
+
+        .review-date {
+            color:
+                    #64748b;
+
+            font-size:
+                    9px;
+        }
+
+
+        .review-stars {
+            margin-bottom:
+                    11px;
+
+            color:
+                    #facc15;
+
+            letter-spacing:
+                    2px;
+
+            font-size:
+                    16px;
         }
 
 
         .review-comment {
-            color: #cbd5e1;
+            margin: 0;
 
-            line-height: 1.6;
+            color:
+                    #aab4c3;
 
-            word-wrap: break-word;
+            line-height:
+                    1.7;
 
-            white-space: pre-wrap;
+            font-size:
+                    12px;
         }
 
 
-        .date {
-            color: #64748b;
+        .review-empty {
+            padding:
+                    55px
+                    20px;
 
-            font-size: 13px;
-        }
+            text-align:
+                    center;
 
+            border-radius:
+                    18px;
 
-        .your-review {
-            display: inline-block;
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.60
+                    );
 
-            background: #1e3a8a;
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.09
+                    );
 
-            color: #bfdbfe;
-
-            padding: 4px 8px;
-
-            border-radius: 20px;
-
-            font-size: 11px;
-
-            margin-left: 8px;
+            color:
+                    #94a3b8;
         }
 
 
         /* =====================================================
-           EMPTY STATE
+           FOOTER
         ====================================================== */
 
-        .empty {
-            background: #1e293b;
+        .reviews-footer {
+            border-top:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.06
+                    );
 
-            padding: 35px;
+            background:
+                    #04070e;
+        }
 
-            border-radius: 10px;
 
-            text-align: center;
+        .reviews-footer-inner {
+            width:
+                    92%;
 
-            color: #94a3b8;
+            max-width:
+                    1380px;
+
+            min-height:
+                    75px;
+
+            margin:
+                    0 auto;
+
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    space-between;
+
+            color:
+                    #475569;
+
+            font-size:
+                    10px;
         }
 
 
@@ -577,17 +1613,101 @@
            RESPONSIVE
         ====================================================== */
 
-        @media (max-width: 700px) {
+        @media (
+        max-width: 1050px
+        ) {
 
-            .top-nav {
-                flex-direction: column;
+            .review-hero {
+                grid-template-columns:
+                        1fr;
+            }
 
-                align-items: flex-start;
+        }
+
+
+        @media (
+        max-width: 800px
+        ) {
+
+            .customer-nav-links {
+                display:
+                        none;
             }
 
 
-            .review-top {
-                align-items: flex-start;
+            .review-movie-card {
+                grid-template-columns:
+                        190px
+                        1fr;
+            }
+
+
+            .review-list {
+                grid-template-columns:
+                        1fr;
+            }
+
+        }
+
+
+        @media (
+        max-width: 650px
+        ) {
+
+            .customer-profile-name {
+                display:
+                        none;
+            }
+
+
+            .reviews-header {
+                flex-direction:
+                        column;
+
+                align-items:
+                        flex-start;
+            }
+
+
+            .back-button {
+                width:
+                        100%;
+            }
+
+
+            .review-movie-card {
+                grid-template-columns:
+                        1fr;
+            }
+
+
+            .review-poster-wrapper {
+                min-height:
+                        350px;
+
+                max-height:
+                        450px;
+            }
+
+
+            .review-poster-wrapper::after {
+                background:
+                        linear-gradient(
+                                to top,
+                                rgba(
+                                        24,
+                                        35,
+                                        57,
+                                        0.96
+                                ),
+                                transparent 60%
+                        );
+            }
+
+
+            .review-movie-content {
+                padding:
+                        24px;
             }
 
         }
@@ -599,43 +1719,106 @@
 
 <body>
 
-<div class="container">
+
+<!-- =========================================================
+     CUSTOMER NAV
+========================================================= -->
+
+<header class="customer-navbar">
 
 
-    <!-- =====================================================
-         TOP NAVIGATION
-    ====================================================== -->
-
-    <div class="top-nav">
+    <div class="customer-navbar-inner">
 
 
-        <a class="back"
-           href="<%= request.getContextPath() %>/catalog">
+        <a
+                href="<%= ctx %>/"
+                class="customer-brand"
+        >
 
-            ← Back to Catalogue
+
+            <span class="customer-brand-icon">
+
+                🎬
+
+            </span>
+
+
+            CineRent
 
         </a>
 
 
-        <div class="nav-links">
+        <nav class="customer-nav-links">
 
 
-            <a href="<%= request.getContextPath() %>/rentals">
+            <a
+                    href="<%= ctx %>/"
+                    class="customer-nav-link"
+            >
+
+                Home
+
+            </a>
+
+
+            <a
+                    href="<%= ctx %>/catalog"
+                    class="customer-nav-link"
+            >
+
+                Movies
+
+            </a>
+
+
+            <a
+                    href="<%= ctx %>/rentals"
+                    class="customer-nav-link"
+            >
 
                 My Rentals
 
             </a>
 
 
-            <a href="<%= request.getContextPath() %>/recently-watched">
+            <a
+                    href="<%= ctx %>/recently-watched"
+                    class="customer-nav-link"
+            >
 
                 Recently Watched
 
             </a>
 
 
-            <a href="<%= request.getContextPath() %>/logout"
-               class="logout">
+        </nav>
+
+
+        <div class="customer-profile">
+
+
+            <div class="customer-avatar">
+
+                <%= HtmlUtil.escape(
+                        userInitial
+                ) %>
+
+            </div>
+
+
+            <span class="customer-profile-name">
+
+                <%= HtmlUtil.escape(
+                        userName
+                ) %>
+
+            </span>
+
+
+            <a
+                    href="<%= ctx %>/logout"
+                    class="customer-logout"
+            >
 
                 Logout
 
@@ -648,411 +1831,109 @@
     </div>
 
 
-    <!-- =====================================================
-         MOVIE INFORMATION
-    ====================================================== -->
+</header>
 
-    <div class="movie-header">
 
+<!-- =========================================================
+     MAIN
+========================================================= -->
 
-        <h1>
+<main class="reviews-page">
 
-            🎬
 
-            <%= HtmlUtil.escape(
-                    movie.getTitle()
-            ) %>
+    <div class="reviews-container">
 
-        </h1>
 
+        <!-- =====================================================
+             HEADER
+        ====================================================== -->
 
-        <div class="movie-meta">
+        <section class="reviews-header">
 
-            <%= HtmlUtil.escape(
-                    movie.getGenre()
-            ) %>
 
-            •
+            <div>
 
-            <%= movie.getReleaseYear() %>
 
-            •
+                <div class="reviews-badge">
 
-            Movie ID:
+                    ⭐ CineRent Reviews
 
-            <%= HtmlUtil.escape(
-                    movie.getMovieId()
-            ) %>
+                </div>
 
-        </div>
 
+                <h1 class="reviews-title">
 
-        <div class="movie-rating">
+                    Movie Reviews
 
-            ⭐
-            <%= movie.getRating() %>
-            / 5
+                </h1>
 
-        </div>
 
+                <p class="reviews-description">
 
-        <div class="movie-description">
+                    Read what other customers think
+                    and share your own movie experience.
 
-            <%= HtmlUtil.escape(
-                    movie.getDescription()
-            ) %>
+                </p>
 
-        </div>
-
-
-    </div>
-
-
-    <!-- =====================================================
-         ERROR MESSAGES
-    ====================================================== -->
-
-    <%
-        if (
-                "noteligible"
-                        .equalsIgnoreCase(
-                                error
-                        )
-        ) {
-    %>
-
-
-    <div class="message error-message">
-
-        You can only review this movie after
-        renting and returning it.
-
-    </div>
-
-
-    <%
-    } else if (
-            "rating"
-                    .equalsIgnoreCase(
-                            error
-                    )
-    ) {
-    %>
-
-
-    <div class="message error-message">
-
-        Please select a valid rating
-        between 1 and 5.
-
-    </div>
-
-
-    <%
-    } else if (
-            "comment"
-                    .equalsIgnoreCase(
-                            error
-                    )
-    ) {
-    %>
-
-
-    <div class="message error-message">
-
-        Please enter a review comment.
-
-    </div>
-
-
-    <%
-    } else if (
-            "commentlength"
-                    .equalsIgnoreCase(
-                            error
-                    )
-    ) {
-    %>
-
-
-    <div class="message error-message">
-
-        Your review comment must be
-        500 characters or fewer.
-
-    </div>
-
-
-    <%
-        }
-    %>
-
-
-    <!-- =====================================================
-         SUCCESS MESSAGES
-    ====================================================== -->
-
-    <%
-        if (
-                "saved"
-                        .equalsIgnoreCase(
-                                success
-                        )
-        ) {
-    %>
-
-
-    <div class="message success-message">
-
-        ✓ Your review has been saved successfully.
-
-    </div>
-
-
-    <%
-    } else if (
-            "deleted"
-                    .equalsIgnoreCase(
-                            success
-                    )
-    ) {
-    %>
-
-
-    <div class="message success-message">
-
-        ✓ Your review has been deleted successfully.
-
-    </div>
-
-
-    <%
-        }
-    %>
-
-
-    <!-- =====================================================
-         REVIEW ELIGIBILITY
-    ====================================================== -->
-
-    <%
-        if (canReview) {
-    %>
-
-
-    <!-- =====================================================
-         REVIEW FORM
-    ====================================================== -->
-
-    <div class="review-form-box">
-
-
-        <h2>
-
-            <%= userReview == null
-                    ? "Write Your Review"
-                    : "Update Your Review" %>
-
-        </h2>
-
-
-        <p class="form-description">
-
-            You have completed a rental for this
-            movie, so you can share your rating
-            and experience.
-
-        </p>
-
-
-        <!-- =================================================
-             ADD / UPDATE REVIEW
-        ================================================== -->
-
-        <form method="post"
-              action="<%= request.getContextPath() %>/reviews">
-
-
-            <input type="hidden"
-                   name="action"
-                   value="save">
-
-
-            <input type="hidden"
-                   name="movieId"
-                   value="<%= HtmlUtil.escape(
-                           movie.getMovieId()
-                   ) %>">
-
-
-            <!-- =============================================
-                 RATING
-            ============================================== -->
-
-            <label for="rating">
-
-                Rating
-
-            </label>
-
-
-            <select id="rating"
-                    name="rating"
-                    required>
-
-
-                <option value="">
-
-                    Select Rating
-
-                </option>
-
-
-                <option value="5"
-                        <%= userReview != null
-                                &&
-                                userReview.getRating() == 5
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐⭐⭐
-                    5 - Excellent
-
-                </option>
-
-
-                <option value="4"
-                        <%= userReview != null
-                                &&
-                                userReview.getRating() == 4
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐⭐
-                    4 - Very Good
-
-                </option>
-
-
-                <option value="3"
-                        <%= userReview != null
-                                &&
-                                userReview.getRating() == 3
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐
-                    3 - Good
-
-                </option>
-
-
-                <option value="2"
-                        <%= userReview != null
-                                &&
-                                userReview.getRating() == 2
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐
-                    2 - Poor
-
-                </option>
-
-
-                <option value="1"
-                        <%= userReview != null
-                                &&
-                                userReview.getRating() == 1
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐
-                    1 - Very Poor
-
-                </option>
-
-
-            </select>
-
-
-            <!-- =============================================
-                 COMMENT
-            ============================================== -->
-
-            <label for="comment">
-
-                Review Comment
-
-            </label>
-
-
-            <textarea id="comment"
-                      name="comment"
-                      maxlength="500"
-                      required
-                      placeholder="Write your opinion about this movie..."><%= userReview == null
-                    ? ""
-                    : HtmlUtil.escape(
-                    userReview.getComment()
-            ) %></textarea>
-
-
-            <div class="character-info">
-
-                Maximum 500 characters.
 
             </div>
 
 
-            <button type="submit"
-                    class="button">
+            <a
+                    href="<%= ctx %>/catalog"
+                    class="back-button"
+            >
 
-                <%= userReview == null
-                        ? "Submit Review"
-                        : "Update Review" %>
+                ← Back to Movies
 
-            </button>
-
-
-        </form>
+            </a>
 
 
-        <!-- =================================================
-             DELETE USER'S OWN REVIEW
-        ================================================== -->
+        </section>
+
+
+        <!-- =====================================================
+             SUCCESS
+        ====================================================== -->
 
         <%
-            if (userReview != null) {
+            if (
+                    "saved".equalsIgnoreCase(
+                            success
+                    )
+            ) {
         %>
 
 
-        <form method="post"
-              action="<%= request.getContextPath() %>/reviews">
+        <div
+                class="review-alert success"
+                data-auto-hide
+        >
+
+            ✓ Your review has been saved successfully.
+
+        </div>
 
 
-            <input type="hidden"
-                   name="action"
-                   value="delete">
+        <%
+            }
+
+            if (
+                    "deleted".equalsIgnoreCase(
+                            success
+                    )
+            ) {
+        %>
 
 
-            <input type="hidden"
-                   name="movieId"
-                   value="<%= HtmlUtil.escape(
-                           movie.getMovieId()
-                   ) %>">
+        <div
+                class="review-alert success"
+                data-auto-hide
+        >
 
+            ✓ Your review has been deleted.
 
-            <button type="submit"
-                    class="delete-button"
-                    onclick="return confirm('Are you sure you want to delete your review?');">
-
-                Delete My Review
-
-            </button>
-
-
-        </form>
+        </div>
 
 
         <%
@@ -1060,150 +1941,671 @@
         %>
 
 
-    </div>
+        <!-- =====================================================
+             ERRORS
+        ====================================================== -->
+
+        <%
+            if (
+                    "noteligible".equalsIgnoreCase(
+                            error
+                    )
+            ) {
+        %>
 
 
-    <%
-    } else {
-    %>
+        <div class="review-alert info">
 
-
-    <!-- =====================================================
-         NOT ELIGIBLE
-    ====================================================== -->
-
-    <div class="message info-message">
-
-        🔒 You can read customer reviews
-        for this movie, but you cannot
-        write a review yet.
-
-        <br><br>
-
-        Rent and return this movie first.
-
-        After the rental status becomes
-
-        <strong>
-            RETURNED
-        </strong>,
-
-        the review form will automatically
-        become available.
-
-    </div>
-
-
-    <%
-        }
-    %>
-
-
-    <!-- =====================================================
-         CUSTOMER REVIEWS HEADING
-    ====================================================== -->
-
-    <div class="reviews-heading">
-
-
-        <h2>
-
-            Customer Reviews
-
-        </h2>
-
-
-        <div class="review-count">
-
-            <%= reviews == null
-                    ? 0
-                    : reviews.size() %>
-
-            Review(s)
+            You need to rent and return this movie
+            before submitting a review.
 
         </div>
 
 
-    </div>
-
-
-    <!-- =====================================================
-         CUSTOMER REVIEWS
-    ====================================================== -->
-
-    <%
-        if (
-                reviews == null
-                        ||
-                        reviews.isEmpty()
+        <%
+        } else if (
+                "rating".equalsIgnoreCase(
+                        error
+                )
         ) {
-    %>
+        %>
 
 
-    <div class="empty">
+        <div class="review-alert error">
+
+            Please select a rating between
+            1 and 5 stars.
+
+        </div>
 
 
-        <h3>
-
-            No Reviews Yet
-
-        </h3>
-
-
-        <p>
-
-            No customer has reviewed
-            this movie yet.
-
-        </p>
+        <%
+        } else if (
+                "comment".equalsIgnoreCase(
+                        error
+                )
+        ) {
+        %>
 
 
-    </div>
+        <div class="review-alert error">
+
+            Please enter your review comment.
+
+        </div>
 
 
-    <%
-    } else {
-
-        for (Review review : reviews) {
-
-
-            boolean ownReview =
-                    loggedUserId.equals(
-                            review.getUserId()
-                    );
-    %>
+        <%
+        } else if (
+                "commentlength".equalsIgnoreCase(
+                        error
+                )
+        ) {
+        %>
 
 
-    <div class="review">
+        <div class="review-alert error">
+
+            Your review must be
+            500 characters or fewer.
+
+        </div>
 
 
-        <!-- REVIEW HEADER -->
-
-        <div class="review-top">
-
-
-            <div>
+        <%
+            }
+        %>
 
 
-                <span class="review-rating">
+        <!-- =====================================================
+             MOVIE + REVIEW FORM
+        ====================================================== -->
 
-                    ⭐
-                    <%= review.getRating() %>
-                    / 5
+        <section class="review-hero">
 
-                </span>
+
+            <!-- =================================================
+                 MOVIE
+            ================================================== -->
+
+            <article class="review-movie-card">
+
+
+                <div class="review-poster-wrapper">
+
+
+                    <img
+                            class="review-poster"
+
+                            src="<%= ctx %>/movie-image?id=<%= HtmlUtil.escape(
+                                    movie.getMovieId()
+                            ) %>"
+
+                            alt="<%= HtmlUtil.escape(
+                                    movie.getTitle()
+                            ) %>"
+
+                            onerror="
+                                    this.onerror=null;
+                                    this.src='<%= ctx %>/images/posters/default.svg';
+                                    "
+                    >
+
+
+                </div>
+
+
+                <div class="review-movie-content">
+
+
+                    <span class="movie-id">
+
+                        Movie ID:
+                        <%= HtmlUtil.escape(
+                                movie.getMovieId()
+                        ) %>
+
+                    </span>
+
+
+                    <h2 class="review-movie-title">
+
+                        <%= HtmlUtil.escape(
+                                movie.getTitle()
+                        ) %>
+
+                    </h2>
+
+
+                    <div class="movie-meta">
+
+
+                        <span>
+
+                            <%= movie.getReleaseYear() %>
+
+                        </span>
+
+
+                        <span>
+                            •
+                        </span>
+
+
+                        <span class="movie-rating">
+
+                            ⭐
+
+                            <%= String.format(
+                                    "%.1f",
+                                    movie.getRating()
+                            ) %>
+
+                        </span>
+
+
+                        <span>
+                            •
+                        </span>
+
+
+                        <span>
+
+                            <%= reviewCount %>
+                            review(s)
+
+                        </span>
+
+
+                    </div>
+
+
+                    <span class="genre-badge">
+
+                        <%= HtmlUtil.escape(
+                                movie.getGenre()
+                        ) %>
+
+                    </span>
+
+
+                    <p class="movie-description">
+
+                        <%
+                            if (
+                                    movie.getDescription()
+                                            == null
+                                            ||
+                                            movie.getDescription()
+                                                    .trim()
+                                                    .isEmpty()
+                            ) {
+                        %>
+
+                        No description available
+                        for this movie.
+
+                        <%
+                        } else {
+                        %>
+
+                        <%= HtmlUtil.escape(
+                                movie.getDescription()
+                        ) %>
+
+                        <%
+                            }
+                        %>
+
+                    </p>
+
+
+                </div>
+
+
+            </article>
+
+
+            <!-- =================================================
+                 REVIEW FORM
+            ================================================== -->
+
+            <aside class="review-form-card">
+
+
+                <h2>
+
+                    <%= userReview == null
+                            ? "Write a Review"
+                            : "Your Review" %>
+
+                </h2>
+
+
+                <p class="review-form-description">
+
+                    <%= canReview
+                            ? "Share your rating and thoughts about this movie."
+                            : "Reviews become available after you return the movie." %>
+
+                </p>
 
 
                 <%
-                    if (ownReview) {
+                    if (canReview) {
                 %>
 
 
-                <span class="your-review">
+                <form
+                        action="<%= ctx %>/reviews"
+                        method="post"
+                >
 
-                    YOUR REVIEW
+
+                    <input
+                            type="hidden"
+                            name="action"
+                            value="save"
+                    >
+
+
+                    <input
+                            type="hidden"
+                            name="movieId"
+                            value="<%= HtmlUtil.escape(
+                                    movie.getMovieId()
+                            ) %>"
+                    >
+
+
+                    <div class="review-form-group">
+
+
+                        <label for="rating">
+
+                            Rating
+
+                        </label>
+
+
+                        <select
+                                id="rating"
+                                class="review-control"
+                                name="rating"
+                                required
+                        >
+
+
+                            <option value="">
+
+                                Select your rating
+
+                            </option>
+
+
+                            <%
+                                for (
+                                        int i = 5;
+                                        i >= 1;
+                                        i--
+                                ) {
+                            %>
+
+
+                            <option
+                                    value="<%= i %>"
+
+                                    <%= userReview != null
+                                            &&
+                                            userReview.getRating()
+                                                    == i
+                                            ? "selected"
+                                            : "" %>
+                            >
+
+                                <%= i %>
+
+                                Star<%= i > 1
+                                    ? "s"
+                                    : "" %>
+
+                                <%= i == 5
+                                        ? " ★★★★★"
+                                        : i == 4
+                                        ? " ★★★★☆"
+                                        : i == 3
+                                        ? " ★★★☆☆"
+                                        : i == 2
+                                        ? " ★★☆☆☆"
+                                        : " ★☆☆☆☆" %>
+
+                            </option>
+
+
+                            <%
+                                }
+                            %>
+
+
+                        </select>
+
+
+                    </div>
+
+
+                    <div class="review-form-group">
+
+
+                        <label for="comment">
+
+                            Your Review
+
+                        </label>
+
+
+                        <textarea
+                                id="comment"
+                                class="review-control"
+                                name="comment"
+                                maxlength="500"
+                                required
+                                placeholder="What did you think about this movie?"
+                        ><%= userReview != null
+                                ? HtmlUtil.escape(
+                                userReview.getComment()
+                        )
+                                : "" %></textarea>
+
+
+                    </div>
+
+
+                    <button
+                            type="submit"
+                            class="review-submit"
+                    >
+
+                        <%= userReview == null
+                                ? "⭐ Submit Review"
+                                : "✓ Update Review" %>
+
+                    </button>
+
+
+                </form>
+
+
+                <!-- DELETE EXISTING REVIEW -->
+
+                <%
+                    if (
+                            userReview != null
+                    ) {
+                %>
+
+
+                <form
+                        action="<%= ctx %>/reviews"
+                        method="post"
+                        data-confirm="Are you sure you want to delete your review?"
+                >
+
+
+                    <input
+                            type="hidden"
+                            name="action"
+                            value="delete"
+                    >
+
+
+                    <input
+                            type="hidden"
+                            name="movieId"
+                            value="<%= HtmlUtil.escape(
+                                    movie.getMovieId()
+                            ) %>"
+                    >
+
+
+                    <button
+                            type="submit"
+                            class="review-delete"
+                    >
+
+                        🗑 Delete My Review
+
+                    </button>
+
+
+                </form>
+
+
+                <%
+                    }
+                %>
+
+
+                <%
+                } else {
+                %>
+
+
+                <div class="review-alert info">
+
+                    📀 Rent and return this movie
+                    before submitting a review.
+
+                    <div
+                            style="
+                                margin-top:12px;
+                            "
+                    >
+
+                        <a
+                                href="<%= ctx %>/catalog"
+                                style="
+                                    color:#93c5fd;
+                                    font-weight:700;
+                                    text-decoration:none;
+                                "
+                        >
+
+                            Browse Movies →
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+
+                <%
+                    }
+                %>
+
+
+            </aside>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             CUSTOMER REVIEWS
+        ====================================================== -->
+
+        <section>
+
+
+            <div class="reviews-section-header">
+
+
+                <h2>
+
+                    Customer Reviews
+
+                </h2>
+
+
+                <span class="review-count">
+
+                    <%= reviewCount %>
+                    Review<%= reviewCount == 1
+                        ? ""
+                        : "s" %>
 
                 </span>
+
+
+            </div>
+
+
+            <%
+                if (
+                        reviews == null
+                                ||
+                                reviews.isEmpty()
+                ) {
+            %>
+
+
+            <div class="review-empty">
+
+
+                <div
+                        style="
+                            font-size:38px;
+                            margin-bottom:10px;
+                        "
+                >
+
+                    ⭐
+
+                </div>
+
+
+                <strong>
+
+                    No customer reviews yet.
+
+                </strong>
+
+
+                <div
+                        style="
+                            margin-top:7px;
+                        "
+                >
+
+                    Be the first customer to share
+                    your experience after returning
+                    this movie.
+
+                </div>
+
+
+            </div>
+
+
+            <%
+            } else {
+            %>
+
+
+            <div class="review-list">
+
+
+                <%
+                    for (
+                            Review review : reviews
+                    ) {
+                %>
+
+
+                <article class="review-card">
+
+
+                    <div class="review-card-header">
+
+
+                        <div class="review-user">
+
+
+                            <div class="review-avatar">
+
+                                C
+
+                            </div>
+
+
+                            <div>
+
+
+                                <div class="review-user-name">
+
+                                    Customer
+                                    <%= HtmlUtil.escape(
+                                            review.getUserId()
+                                    ) %>
+
+                                </div>
+
+
+                                <div class="review-date">
+
+                                    <%= HtmlUtil.escape(
+                                            review.getReviewDate()
+                                    ) %>
+
+                                </div>
+
+
+                            </div>
+
+
+                        </div>
+
+
+                    </div>
+
+
+                    <div class="review-stars">
+
+
+                        <%
+                            for (
+                                    int star = 1;
+                                    star <= 5;
+                                    star++
+                            ) {
+                        %>
+
+
+                        <%= star
+                                <=
+                                review.getRating()
+                                ? "★"
+                                : "☆" %>
+
+
+                        <%
+                            }
+                        %>
+
+
+                    </div>
+
+
+                    <p class="review-comment">
+
+                        <%= HtmlUtil.escape(
+                                review.getComment()
+                        ) %>
+
+                    </p>
+
+
+                </article>
 
 
                 <%
@@ -1214,39 +2616,40 @@
             </div>
 
 
-            <div class="date">
+            <%
+                }
+            %>
 
-                <%= HtmlUtil.escape(
-                        review.getReviewDate()
-                ) %>
 
-            </div>
+        </section>
 
+
+    </div>
+
+
+</main>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer class="reviews-footer">
+
+
+    <div class="reviews-footer-inner">
+
+
+        <div>
+
+            © 2026 CineRent
 
         </div>
 
 
-        <!-- REVIEW COMMENT -->
+        <div>
 
-        <div class="review-comment">
-
-            <%= HtmlUtil.escape(
-                    review.getComment()
-            ) %>
-
-        </div>
-
-
-        <!-- CUSTOMER -->
-
-        <div class="date"
-             style="margin-top: 12px;">
-
-            Customer ID:
-
-            <%= HtmlUtil.escape(
-                    review.getUserId()
-            ) %>
+            Browse • Rent • Watch • Review
 
         </div>
 
@@ -1254,13 +2657,13 @@
     </div>
 
 
-    <%
-            }
-        }
-    %>
+</footer>
 
 
-</div>
+<script
+        src="<%= ctx %>/js/app.js"
+></script>
+
 
 </body>
 

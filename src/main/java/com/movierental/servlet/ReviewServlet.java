@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
+
 @WebServlet("/reviews")
 public class ReviewServlet extends HttpServlet {
 
@@ -30,7 +31,7 @@ public class ReviewServlet extends HttpServlet {
 
 
     // =========================================================
-    // INITIALIZATION
+    // INITIALIZE
     // =========================================================
 
     @Override
@@ -79,15 +80,18 @@ public class ReviewServlet extends HttpServlet {
                             + reviewFilePath
             );
 
+
             System.out.println(
                     "ReviewServlet movies file: "
                             + movieFilePath
             );
 
+
             System.out.println(
                     "ReviewServlet rentals file: "
                             + rentalFilePath
             );
+
 
         } catch (Exception e) {
 
@@ -108,6 +112,7 @@ public class ReviewServlet extends HttpServlet {
             HttpServletRequest request,
             HttpServletResponse response
     ) throws ServletException, IOException {
+
 
         HttpSession session =
                 request.getSession(false);
@@ -130,7 +135,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // GET MOVIE ID
+        // MOVIE ID
         // =====================================================
 
         String movieId =
@@ -142,7 +147,8 @@ public class ReviewServlet extends HttpServlet {
         if (
                 movieId == null
                         ||
-                        movieId.trim().isEmpty()
+                        movieId.trim()
+                                .isEmpty()
         ) {
 
             response.sendRedirect(
@@ -155,7 +161,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // GET MOVIE
+        // FIND MOVIE
         // =====================================================
 
         Movie movie =
@@ -169,12 +175,16 @@ public class ReviewServlet extends HttpServlet {
 
             response.sendRedirect(
                     request.getContextPath()
-                            + "/catalog"
+                            + "/catalog?error=notfound"
             );
 
             return;
         }
 
+
+        // =====================================================
+        // CURRENT USER
+        // =====================================================
 
         String userId =
                 (String)
@@ -184,8 +194,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // CHECK REVIEW ELIGIBILITY
-        // Customer must have returned the movie
+        // REVIEW ELIGIBILITY
         // =====================================================
 
         boolean canReview =
@@ -197,7 +206,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // GET CUSTOMER'S EXISTING REVIEW
+        // CURRENT USER REVIEW
         // =====================================================
 
         Review userReview =
@@ -209,7 +218,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // GET ALL REVIEWS FOR MOVIE
+        // ALL REVIEWS FOR MOVIE
         // =====================================================
 
         List<Review> reviews =
@@ -266,6 +275,7 @@ public class ReviewServlet extends HttpServlet {
             HttpServletResponse response
     ) throws ServletException, IOException {
 
+
         request.setCharacterEncoding(
                 "UTF-8"
         );
@@ -274,10 +284,6 @@ public class ReviewServlet extends HttpServlet {
         HttpSession session =
                 request.getSession(false);
 
-
-        // =====================================================
-        // CUSTOMER ACCESS CHECK
-        // =====================================================
 
         if (
                 !checkCustomerAccess(
@@ -298,7 +304,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // SAVE / UPDATE REVIEW
+        // SAVE / UPDATE
         // =====================================================
 
         if (
@@ -318,7 +324,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // DELETE REVIEW
+        // DELETE
         // =====================================================
 
         if (
@@ -337,10 +343,6 @@ public class ReviewServlet extends HttpServlet {
         }
 
 
-        // =====================================================
-        // INVALID ACTION
-        // =====================================================
-
         response.sendRedirect(
                 request.getContextPath()
                         + "/catalog"
@@ -357,6 +359,7 @@ public class ReviewServlet extends HttpServlet {
             HttpServletResponse response,
             HttpSession session
     ) throws IOException {
+
 
         String userId =
                 (String)
@@ -378,7 +381,8 @@ public class ReviewServlet extends HttpServlet {
         if (
                 movieId == null
                         ||
-                        movieId.trim().isEmpty()
+                        movieId.trim()
+                                .isEmpty()
         ) {
 
             response.sendRedirect(
@@ -389,6 +393,10 @@ public class ReviewServlet extends HttpServlet {
             return;
         }
 
+
+        // =====================================================
+        // CHECK MOVIE
+        // =====================================================
 
         Movie movie =
                 movieService
@@ -401,7 +409,7 @@ public class ReviewServlet extends HttpServlet {
 
             response.sendRedirect(
                     request.getContextPath()
-                            + "/catalog"
+                            + "/catalog?error=notfound"
             );
 
             return;
@@ -409,7 +417,6 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // SECURITY CHECK
         // CUSTOMER MUST HAVE RETURNED MOVIE
         // =====================================================
 
@@ -435,7 +442,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // RATING VALIDATION
+        // RATING
         // =====================================================
 
         int rating;
@@ -449,6 +456,7 @@ public class ReviewServlet extends HttpServlet {
                                     "rating"
                             )
                     );
+
 
         } catch (
                 NumberFormatException e
@@ -483,7 +491,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // COMMENT VALIDATION
+        // COMMENT
         // =====================================================
 
         String comment =
@@ -531,7 +539,10 @@ public class ReviewServlet extends HttpServlet {
         }
 
 
-        // "|" is used as the text-file separator
+        /*
+         * Text files use |
+         * as the field separator.
+         */
         comment =
                 comment.replace(
                         "|",
@@ -540,7 +551,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         // =====================================================
-        // FIND EXISTING REVIEW
+        // EXISTING REVIEW
         // =====================================================
 
         Review existingReview =
@@ -556,6 +567,7 @@ public class ReviewServlet extends HttpServlet {
         // =====================================================
 
         if (existingReview == null) {
+
 
             Review review =
                     new Review(
@@ -580,14 +592,13 @@ public class ReviewServlet extends HttpServlet {
                             review
                     );
 
-        }
+
+        } else {
 
 
-        // =====================================================
-        // UPDATE EXISTING REVIEW
-        // =====================================================
-
-        else {
+            // =================================================
+            // UPDATE EXISTING REVIEW
+            // =================================================
 
             existingReview
                     .setRating(
@@ -624,10 +635,6 @@ public class ReviewServlet extends HttpServlet {
         );
 
 
-        // =====================================================
-        // REDIRECT
-        // =====================================================
-
         response.sendRedirect(
                 request.getContextPath()
                         + "/reviews?movieId="
@@ -647,6 +654,7 @@ public class ReviewServlet extends HttpServlet {
             HttpSession session
     ) throws IOException {
 
+
         String userId =
                 (String)
                         session.getAttribute(
@@ -663,7 +671,8 @@ public class ReviewServlet extends HttpServlet {
         if (
                 movieId == null
                         ||
-                        movieId.trim().isEmpty()
+                        movieId.trim()
+                                .isEmpty()
         ) {
 
             response.sendRedirect(
@@ -675,13 +684,9 @@ public class ReviewServlet extends HttpServlet {
         }
 
 
-        /*
-         * Search using both userId and movieId.
-         *
-         * This prevents one customer from deleting
-         * another customer's review by changing
-         * request parameters.
-         */
+        // =====================================================
+        // FIND CURRENT USER'S REVIEW
+        // =====================================================
 
         Review review =
                 reviewService
@@ -692,6 +697,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         if (review != null) {
+
 
             reviewService
                     .deleteReview(
@@ -715,12 +721,13 @@ public class ReviewServlet extends HttpServlet {
 
 
     // =========================================================
-    // RECALCULATE MOVIE RATING
+    // UPDATE MOVIE AVERAGE RATING
     // =========================================================
 
     private void updateMovieAverageRating(
             String movieId
     ) throws IOException {
+
 
         Movie movie =
                 movieService
@@ -730,6 +737,7 @@ public class ReviewServlet extends HttpServlet {
 
 
         if (movie == null) {
+
             return;
         }
 
@@ -754,7 +762,7 @@ public class ReviewServlet extends HttpServlet {
 
 
     // =========================================================
-    // CUSTOMER ACCESS CHECK
+    // CUSTOMER SECURITY
     // =========================================================
 
     private boolean checkCustomerAccess(
@@ -763,7 +771,11 @@ public class ReviewServlet extends HttpServlet {
             HttpServletResponse response
     ) throws IOException {
 
-        // User not logged in
+
+        // =====================================================
+        // NOT LOGGED IN
+        // =====================================================
+
         if (
                 session == null
                         ||
@@ -781,6 +793,10 @@ public class ReviewServlet extends HttpServlet {
         }
 
 
+        // =====================================================
+        // ROLE CHECK
+        // =====================================================
+
         String role =
                 (String)
                         session.getAttribute(
@@ -788,7 +804,6 @@ public class ReviewServlet extends HttpServlet {
                         );
 
 
-        // Only customers can access reviews
         if (
                 role == null
                         ||
@@ -806,7 +821,10 @@ public class ReviewServlet extends HttpServlet {
         }
 
 
-        // User ID must exist in session
+        // =====================================================
+        // USER ID CHECK
+        // =====================================================
+
         if (
                 session.getAttribute(
                         "userId"

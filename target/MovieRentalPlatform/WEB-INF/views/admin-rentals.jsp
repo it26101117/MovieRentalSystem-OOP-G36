@@ -8,130 +8,63 @@
 <%@ page import="com.movierental.model.Movie" %>
 
 <%
-    String adminName =
-            (String) session.getAttribute(
-                    "userName"
-            );
+    String adminName = (String) session.getAttribute( "userName" );
 
 
-    String role =
-            (String) session.getAttribute(
-                    "role"
-            );
+    String role =(String) session.getAttribute("role");
 
 
-    // =========================================================
     // ADMIN ACCESS CHECK
-    // =========================================================
 
-    if (
-            adminName == null
-                    ||
-                    role == null
-                    ||
-                    !"ADMIN".equalsIgnoreCase(role)
-    ) {
 
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/login"
-        );
+    if (adminName == null ||role == null|| !"ADMIN".equalsIgnoreCase(role)) {
+
+        response.sendRedirect(request.getContextPath()+ "/login");
 
         return;
     }
 
 
-    // =========================================================
     // GET REQUEST DATA
-    // =========================================================
 
-    List<Rental> rentals =
-            (List<Rental>)
-                    request.getAttribute(
-                            "rentals"
-                    );
+    List<Rental> rentals =(List<Rental>)request.getAttribute("rentals");
 
 
-    Map<String, User> userMap =
-            (Map<String, User>)
-                    request.getAttribute(
-                            "userMap"
-                    );
+    Map<String, User> userMap =(Map<String, User>)request.getAttribute("userMap");
 
+    Map<String, Movie> movieMap =(Map<String, Movie>)request.getAttribute("movieMap");
 
-    Map<String, Movie> movieMap =
-            (Map<String, Movie>)
-                    request.getAttribute(
-                            "movieMap"
-                    );
+    String selectedStatus =(String)request.getAttribute("selectedStatus");
 
+    String search =(String)request.getAttribute("search");
 
-    String selectedStatus =
-            (String)
-                    request.getAttribute(
-                            "selectedStatus"
-                    );
+    Integer totalRentalCount =(Integer)request.getAttribute("totalRentalCount");
 
+    Integer activeRentalCount =(Integer)request.getAttribute("activeRentalCount");
 
-    String search =
-            (String)
-                    request.getAttribute(
-                            "search"
-                    );
+    Integer returnedRentalCount =(Integer)request.getAttribute("returnedRentalCount");
 
-
-    Integer totalRentalCount =
-            (Integer)
-                    request.getAttribute(
-                            "totalRentalCount"
-                    );
-
-
-    Integer activeRentalCount =
-            (Integer)
-                    request.getAttribute(
-                            "activeRentalCount"
-                    );
-
-
-    Integer returnedRentalCount =
-            (Integer)
-                    request.getAttribute(
-                            "returnedRentalCount"
-                    );
-
-
-    Integer filteredCount =
-            (Integer)
-                    request.getAttribute(
-                            "filteredCount"
-                    );
-
+    Integer filteredCount =(Integer)request.getAttribute("filteredCount");
 
     if (selectedStatus == null) {
         selectedStatus = "all";
     }
 
-
     if (search == null) {
         search = "";
     }
-
 
     if (totalRentalCount == null) {
         totalRentalCount = 0;
     }
 
-
     if (activeRentalCount == null) {
         activeRentalCount = 0;
     }
 
-
     if (returnedRentalCount == null) {
         returnedRentalCount = 0;
     }
-
 
     if (filteredCount == null) {
         filteredCount = 0;
@@ -185,9 +118,7 @@
         }
 
 
-        /* ================================================
-           HEADER
-        ================================================= */
+        /* HEADER */
 
         .header {
             display: flex;
@@ -240,9 +171,7 @@
         }
 
 
-        /* ================================================
-           STATISTICS
-        ================================================= */
+        /*  STATISTICS */
 
         .statistics {
             display: grid;
@@ -294,9 +223,7 @@
         }
 
 
-        /* ================================================
-           FILTER
-        ================================================= */
+        /*  FILTER */
 
         .filter-box {
             background: #1e293b;
@@ -368,6 +295,7 @@
             cursor: pointer;
 
             font-weight: bold;
+
         }
 
 
@@ -391,9 +319,7 @@
         }
 
 
-        /* ================================================
-           TABLE
-        ================================================= */
+        /*  TABLE */
 
         .table-wrapper {
             background: #1e293b;
@@ -458,9 +384,7 @@
         }
 
 
-        /* ================================================
-           STATUS
-        ================================================= */
+        /*  STATUS */
 
         .status {
             display: inline-block;
@@ -498,9 +422,7 @@
         }
 
 
-        /* ================================================
-           RESULT INFO
-        ================================================= */
+        /*  RESULT INFO */
 
         .result-info {
             color: #94a3b8;
@@ -516,9 +438,7 @@
         }
 
 
-        /* ================================================
-           MOBILE
-        ================================================= */
+        /*   MOBILE */
 
         @media (max-width: 700px) {
 
@@ -552,9 +472,7 @@
 <div class="container">
 
 
-    <!-- ===============================================
-         HEADER
-    ================================================ -->
+    <!-- HEADER -->
 
     <div class="header">
 
@@ -598,9 +516,7 @@
     </div>
 
 
-    <!-- ===============================================
-         STATISTICS
-    ================================================ -->
+    <!--  STATISTICS -->
 
     <div class="statistics">
 
@@ -647,9 +563,7 @@
     </div>
 
 
-    <!-- ===============================================
-         FILTERS
-    ================================================ -->
+    <!--  FILTERS -->
 
     <div class="filter-box">
 
@@ -722,9 +636,7 @@
     </div>
 
 
-    <!-- ===============================================
-         RESULT COUNT
-    ================================================ -->
+    <!-- RESULT COUNT -->
 
     <div class="result-info">
 
@@ -739,19 +651,13 @@
     </div>
 
 
-    <!-- ===============================================
-         RENTAL TABLE
-    ================================================ -->
+    <!--  RENTAL TABLE-->
 
     <div class="table-wrapper">
 
 
         <%
-            if (
-                    rentals == null
-                            ||
-                            rentals.isEmpty()
-            ) {
+            if ( rentals == null  ||  rentals.isEmpty() ) {
         %>
 
 
@@ -815,31 +721,15 @@
             <%
                 for (Rental rental : rentals) {
 
-                    User customer =
-                            userMap != null
-                                    ? userMap.get(
-                                    rental.getUserId()
-                            )
-                                    : null;
+                    User customer = userMap != null ? userMap.get(  rental.getUserId() ): null;
 
 
-                    Movie movie =
-                            movieMap != null
-                                    ? movieMap.get(
-                                    rental.getMovieId()
-                            )
-                                    : null;
+                    Movie movie =  movieMap != null   ? movieMap.get( rental.getMovieId() ) : null;
+
+                    String status = rental.getStatus();
 
 
-                    String status =
-                            rental.getStatus();
-
-
-                    boolean returned =
-                            "RETURNED"
-                                    .equalsIgnoreCase(
-                                            status
-                                    );
+                    boolean returned = "RETURNED" .equalsIgnoreCase( status );
             %>
 
 
@@ -937,13 +827,7 @@
                 <td>
 
                     <%
-                        if (
-                                rental.getReturnDate() == null
-                                        ||
-                                        rental.getReturnDate()
-                                                .trim()
-                                                .isEmpty()
-                        ) {
+                        if (rental.getReturnDate() == null || rental.getReturnDate().trim().isEmpty() ) {
                     %>
 
                     <span class="sub-text">
@@ -962,7 +846,6 @@
 
                 </td>
 
-
                 <!-- STATUS -->
 
                 <td>
@@ -978,24 +861,19 @@
 
                 </td>
 
-
             </tr>
-
 
             <%
                 }
             %>
 
-
             </tbody>
 
         </table>
 
-
         <%
             }
         %>
-
 
     </div>
 
