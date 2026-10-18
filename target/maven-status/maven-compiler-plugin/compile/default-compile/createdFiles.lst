@@ -1,3 +1,4 @@
+com\movierental\servlet\MovieImageServlet.class
 com\movierental\MovieRentalApplication.class
 com\movierental\util\FileHandler.class
 com\movierental\model\Movie.class

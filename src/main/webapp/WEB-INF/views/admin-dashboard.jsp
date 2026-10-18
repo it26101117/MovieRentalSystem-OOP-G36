@@ -1,23 +1,85 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
+<%@ page import="com.movierental.util.HtmlUtil" %>
+
 <%
-    String adminName = (String) session.getAttribute("userName");
+    String ctx =
+            request.getContextPath();
 
-    String role = (String) session.getAttribute("role");
+    String adminName =
+            (String) session.getAttribute(
+                    "userName"
+            );
 
-    if (adminName == null|| role == null || !"ADMIN".equalsIgnoreCase(role)) {
-        response.sendRedirect(request.getContextPath()+ "/login");
+    String role =
+            (String) session.getAttribute(
+                    "role"
+            );
+
+
+    // =========================================================
+    // SECURITY CHECK
+    // =========================================================
+
+    if (
+            adminName == null
+                    ||
+                    role == null
+                    ||
+                    !"ADMIN".equalsIgnoreCase(role)
+    ) {
+
+        response.sendRedirect(
+                ctx + "/login"
+        );
+
         return;
     }
-    // DASHBOARD STATISTICS
-    Integer movieCount = (Integer) request.getAttribute("movieCount");
-    Integer customerCount = (Integer) request.getAttribute(  "customerCount" );
-    Integer activeRentalCount = (Integer) request.getAttribute("activeRentalCount");
-    Integer returnedRentalCount = (Integer) request.getAttribute("returnedRentalCount" );
-    Integer totalRentalCount =(Integer) request.getAttribute( "totalRentalCount");
-    Integer reviewCount =(Integer) request.getAttribute("reviewCount" );
-    Integer availableCopies = (Integer) request.getAttribute( "availableCopies" );
 
+
+    // =========================================================
+    // DASHBOARD STATISTICS
+    // =========================================================
+
+    Integer movieCount =
+            (Integer) request.getAttribute(
+                    "movieCount"
+            );
+
+    Integer customerCount =
+            (Integer) request.getAttribute(
+                    "customerCount"
+            );
+
+    Integer activeRentalCount =
+            (Integer) request.getAttribute(
+                    "activeRentalCount"
+            );
+
+    Integer returnedRentalCount =
+            (Integer) request.getAttribute(
+                    "returnedRentalCount"
+            );
+
+    Integer totalRentalCount =
+            (Integer) request.getAttribute(
+                    "totalRentalCount"
+            );
+
+    Integer reviewCount =
+            (Integer) request.getAttribute(
+                    "reviewCount"
+            );
+
+    Integer availableCopies =
+            (Integer) request.getAttribute(
+                    "availableCopies"
+            );
+
+
+    // =========================================================
+    // DEFAULT VALUES
+    // =========================================================
 
     if (movieCount == null) {
         movieCount = 0;
@@ -50,255 +112,481 @@
 
 
 <!DOCTYPE html>
+
 <html lang="en">
+
+
 <head>
+
     <meta charset="UTF-8">
 
-    <meta name="viewport"content="width=device-width, initial-scale=1.0">
-
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
 
     <title>
         Admin Dashboard | CineRent
     </title>
 
 
+    <!-- GLOBAL CSS -->
+
+    <link
+            rel="stylesheet"
+            href="<%= ctx %>/css/style.css"
+    >
+
+
+    <!-- DASHBOARD SPECIFIC CSS -->
+
     <style>
 
-        * {
-            box-sizing: border-box;
+        /* =====================================================
+           DASHBOARD PAGE
+        ====================================================== */
+
+        .admin-dashboard {
+            padding: 42px 0 60px;
         }
 
-        body {
-            margin: 0;
-            font-family:Arial,Helvetica, sans-serif;
-            background: #0f172a;
-            color: white;
-        }
-        .container {
-            width: 92%;
-            max-width: 1280px;
-            margin: 40px auto;
-        }
 
-        .header {
+        .dashboard-hero {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 20px;
+            gap: 30px;
+
             margin-bottom: 35px;
+
+            padding: 30px;
+
+            border-radius: 22px;
+
+            background:
+                    radial-gradient(
+                            circle at top right,
+                            rgba(124, 58, 237, 0.20),
+                            transparent 35%
+                    ),
+                    rgba(15, 23, 42, 0.72);
+
+            border:
+                    1px solid
+                    rgba(148, 163, 184, 0.12);
         }
 
 
-        .header-title h1 {
+        .dashboard-hero-content {
+            max-width: 720px;
+        }
+
+
+        .dashboard-badge {
+            display: inline-flex;
+            align-items: center;
+
+            gap: 7px;
+
+            padding: 7px 12px;
+
+            margin-bottom: 16px;
+
+            border-radius: 999px;
+
+            font-size: 12px;
+            font-weight: 700;
+
+            background:
+                    rgba(124, 58, 237, 0.14);
+
+            border:
+                    1px solid
+                    rgba(139, 92, 246, 0.30);
+        }
+
+
+        .dashboard-title {
             margin: 0;
 
-            font-size: 30px;
-        }
-        .subtitle {
-            color: #94a3b8;
-            margin-top: 8px;
-        }
-        .welcome {
-            color: #cbd5e1;
-            margin-top: 10px;
-            margin-bottom: 0;
-        }
-        .welcome strong {
-            color: #60a5fa;
-        }
-        .nav {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            flex-wrap: wrap;
-        }
-        .nav a {
-            color: #60a5fa;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .nav a:hover {
-            text-decoration: underline;
-        }
-        .logout {
-            color: #f87171 !important;
+            font-size: clamp(
+                    28px,
+                    4vw,
+                    42px
+            );
+
+            line-height: 1.1;
         }
 
-        .section-heading {
+
+        .dashboard-title span {
+            color: #8b5cf6;
+        }
+
+
+        .dashboard-description {
+            margin:
+                    13px
+                    0
+                    0;
+
+            color: #94a3b8;
+
+            line-height: 1.7;
+        }
+
+
+        .dashboard-status {
+            flex-shrink: 0;
+
+            padding: 14px 18px;
+
+            border-radius: 14px;
+
+            background:
+                    rgba(34, 197, 94, 0.10);
+
+            border:
+                    1px solid
+                    rgba(34, 197, 94, 0.25);
+
+            color: #86efac;
+
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           SECTION HEADER
+        ====================================================== */
+
+        .dashboard-section-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-end;
+
             gap: 20px;
-            margin-bottom: 20px;
+
+            margin:
+                    42px
+                    0
+                    20px;
         }
-        .section-heading h2 {
+
+
+        .dashboard-section-header h2 {
             margin: 0;
+
+            font-size: 23px;
         }
 
-        .section-description {
+
+        .dashboard-section-header p {
+            margin:
+                    6px
+                    0
+                    0;
+
             color: #94a3b8;
 
             font-size: 14px;
-
-            margin-top: 6px;
         }
 
-        /*
+
+        /* =====================================================
            STATISTICS
-         */
+        ====================================================== */
 
-        .statistics {
+        .dashboard-stats {
             display: grid;
+
             grid-template-columns:
-                    repeat( auto-fit,minmax(190px, 1fr));
-            gap: 20px;
-            margin-bottom: 45px;
+                    repeat(
+                            auto-fit,
+                            minmax(180px, 1fr)
+                    );
+
+            gap: 16px;
         }
-        .stat-card {
-            background: #1e293b;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow:0 8px 25px rgba(0, 0, 0, 0.18);
-            border: 1px solid transparent;
-            transition: transform 0.2s,border-color 0.2s;
+
+
+        .dashboard-stat-card {
+            padding: 22px;
+
+            border-radius: 18px;
+
+            background:
+                    rgba(30, 41, 59, 0.72);
+
+            border:
+                    1px solid
+                    rgba(148, 163, 184, 0.12);
+
+            transition:
+                    transform 0.2s ease,
+                    border-color 0.2s ease;
         }
-        .stat-card:hover {
-            transform: translateY(-3px);
-            border-color: #334155;
+
+
+        .dashboard-stat-card:hover {
+            transform:
+                    translateY(-3px);
+
+            border-color:
+                    rgba(139, 92, 246, 0.40);
         }
-        .stat-icon {
-            font-size: 30px;
-            margin-bottom: 12px;
+
+
+        .dashboard-stat-icon {
+            font-size: 27px;
+
+            margin-bottom: 14px;
         }
-        .stat-number {
-            font-size: 34px;
-            font-weight: bold;
+
+
+        .dashboard-stat-value {
             margin-bottom: 6px;
+
+            font-size: 32px;
+
+            font-weight: 800;
         }
-        .stat-label {
+
+
+        .dashboard-stat-label {
             color: #94a3b8;
-            font-size: 14px;
+
+            font-size: 13px;
         }
-        .blue-number {
+
+
+        .stat-blue {
             color: #60a5fa;
         }
-        .yellow-number {
-            color: #facc15;
-        }
-        .green-number {
-            color: #4ade80;
-        }
-        .purple-number {
+
+
+        .stat-purple {
             color: #c084fc;
         }
-        /*
+
+
+        .stat-green {
+            color: #4ade80;
+        }
+
+
+        .stat-yellow {
+            color: #facc15;
+        }
+
+
+        /* =====================================================
            MANAGEMENT
-         */
+        ====================================================== */
 
         .management-grid {
             display: grid;
+
             grid-template-columns:
-                    repeat(auto-fit, minmax(250px, 1fr) );
-            gap: 20px;
-            margin-bottom: 45px;
+                    repeat(
+                            auto-fit,
+                            minmax(245px, 1fr)
+                    );
+
+            gap: 18px;
         }
+
+
         .management-card {
-            display: block;
-            background: #1e293b;
-            padding: 26px;
-            border-radius: 12px;
-            text-decoration: none;
-            color: white;
-            border:1px solid transparent;
-            min-height: 225px;
-            transition:transform 0.2s,border-color 0.2s,background 0.2s;
-        }
-        .management-card:hover {
-            transform: translateY(-4px);
-            border-color: #3b82f6;
-            background: #243146;
-        }
-        .management-icon {
-            font-size: 36px;
-            margin-bottom: 17px;
-        }
-        .management-card h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-        .management-card p {
-            color: #94a3b8;
-            line-height: 1.5;
-            margin-bottom: 0;
-        }
+            position: relative;
 
-        /*
-           ACTIVE STATUS
-        */
+            display: flex;
+            flex-direction: column;
 
-        .working {
-            display: inline-block;
-            background: #14532d;
-            color: #86efac;
-            padding: 6px 10px;
+            min-height: 260px;
+
+            padding: 25px;
+
             border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-top: 18px;
+
+            background:
+                    rgba(30, 41, 59, 0.76);
+
+            border:
+                    1px solid
+                    rgba(148, 163, 184, 0.12);
+
+            overflow: hidden;
+
+            transition:
+                    transform 0.2s ease,
+                    border-color 0.2s ease;
         }
 
 
-        /*
-           QUICK INFORMATION
-       */
+        .management-card:hover {
+            transform:
+                    translateY(-4px);
 
-        .quick-info {
-            display: grid;
-            grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
-            margin-top: 25px;
+            border-color:
+                    rgba(139, 92, 246, 0.38);
         }
-        .quick-item {
-            background: #1e293b;
-            padding: 18px;
-            border-radius: 9px;
+
+
+        .management-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 50px;
+            height: 50px;
+
+            margin-bottom: 18px;
+
+            border-radius: 14px;
+
+            background:
+                    rgba(124, 58, 237, 0.13);
+
+            font-size: 25px;
         }
-        .quick-label {
+
+
+        .management-card h3 {
+            margin:
+                    0
+                    0
+                    9px;
+
+            font-size: 18px;
+        }
+
+
+        .management-card p {
+            flex: 1;
+
+            margin:
+                    0
+                    0
+                    22px;
+
             color: #94a3b8;
-            font-size: 13px;
-            margin-bottom: 7px;
+
+            font-size: 14px;
+
+            line-height: 1.65;
         }
-        .quick-value {
-            font-weight: bold;
+
+
+        .management-card .btn {
+            width: 100%;
+
+            justify-content: center;
         }
 
 
-        /*
-           SYSTEM SUMMARY
-        */
+        .management-status {
+            position: absolute;
 
-        .info-box {
+            top: 18px;
+            right: 18px;
+
+            padding: 5px 8px;
+
+            border-radius: 999px;
+
+            background:
+                    rgba(34, 197, 94, 0.10);
+
+            border:
+                    1px solid
+                    rgba(34, 197, 94, 0.20);
+
+            color: #86efac;
+
+            font-size: 9px;
+            font-weight: 800;
+
+            letter-spacing: 0.7px;
+        }
+
+
+        /* =====================================================
+           SYSTEM INFORMATION
+        ====================================================== */
+
+        .system-grid {
+            display: grid;
+
+            grid-template-columns:
+                    repeat(
+                            auto-fit,
+                            minmax(210px, 1fr)
+                    );
+
+            gap: 15px;
+        }
+
+
+        .system-item {
+            padding: 19px;
+
+            border-radius: 15px;
+
+            background:
+                    rgba(30, 41, 59, 0.65);
+
+            border:
+                    1px solid
+                    rgba(148, 163, 184, 0.10);
+        }
+
+
+        .system-label {
+            margin-bottom: 8px;
+
+            color: #94a3b8;
+
+            font-size: 12px;
+        }
+
+
+        .system-value {
+            font-weight: 750;
+        }
+
+
+        /* =====================================================
+           SUMMARY
+        ====================================================== */
+
+        .dashboard-summary {
             margin-top: 35px;
-            background: #172033;
-            border-left:4px solid #2563eb;
-            padding: 22px;
-            border-radius: 8px;
+
+            padding: 24px;
+
+            border-radius: 18px;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            rgba(37, 99, 235, 0.10),
+                            rgba(124, 58, 237, 0.08)
+                    );
+
+            border:
+                    1px solid
+                    rgba(96, 165, 250, 0.18);
+
             color: #cbd5e1;
-            line-height: 1.7;
-        }
-        .info-box strong {
-            color: #60a5fa;
-        }
-           FOOTER
-        .footer {
-            color: #64748b;
-            text-align: center;
-            font-size: 13px;
 
-            margin-top: 45px;
+            line-height: 1.8;
+        }
 
-            padding-bottom: 20px;
+
+        .dashboard-summary strong {
+            color: #ffffff;
         }
 
 
@@ -306,29 +594,55 @@
            RESPONSIVE
         ====================================================== */
 
-        @media (max-width: 760px) {
+        @media (
+        max-width: 760px
+        ) {
 
-            .header {
+            .admin-dashboard {
+                padding-top: 24px;
+            }
+
+
+            .dashboard-hero {
+                flex-direction: column;
+
+                align-items: flex-start;
+
+                padding: 22px;
+            }
+
+
+            .dashboard-section-header {
                 flex-direction: column;
 
                 align-items: flex-start;
             }
 
 
-            .section-heading {
-                flex-direction: column;
-
-                align-items: flex-start;
+            .dashboard-stats {
+                grid-template-columns:
+                        repeat(
+                                2,
+                                1fr
+                        );
             }
 
+        }
 
-            .statistics {
-                grid-template-columns: 1fr;
+
+        @media (
+        max-width: 480px
+        ) {
+
+            .dashboard-stats {
+                grid-template-columns:
+                        1fr;
             }
 
 
             .management-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns:
+                        1fr;
             }
 
         }
@@ -340,716 +654,654 @@
 
 <body>
 
-<div class="container">
+
+<!-- =========================================================
+     ADMIN NAVIGATION
+========================================================= -->
+
+<jsp:include
+        page="/WEB-INF/views/partials/admin-nav.jsp"
+/>
 
 
-    <!-- =====================================================
-         HEADER
-    ====================================================== -->
+<!-- =========================================================
+     DASHBOARD
+========================================================= -->
 
-    <div class="header">
-
-        <div class="header-title">
-
-            <h1>
-                🎬 CineRent Admin
-            </h1>
+<main class="admin-dashboard">
 
 
-            <p class="subtitle">
-                Movie Rental & Review Platform
-            </p>
+    <div class="container">
 
 
-            <p class="welcome">
+        <!-- =====================================================
+             HERO
+        ====================================================== -->
 
-                Welcome,
-
-                <strong>
-                    <%= adminName %>
-                </strong>
-
-                👋
-
-            </p>
-
-        </div>
+        <section class="dashboard-hero">
 
 
-        <!-- =================================================
-             NAVIGATION
-        ================================================== -->
-
-        <div class="nav">
-
-            <a href="<%= request.getContextPath() %>/admin">
-
-                Dashboard
-
-            </a>
+            <div class="dashboard-hero-content">
 
 
-            <a href="<%= request.getContextPath() %>/movies">
+                <div class="dashboard-badge">
 
-                Movies
+                    ⚡ Administrator Dashboard
 
-            </a>
-
-
-            <a href="<%= request.getContextPath() %>/admin/customers">
-
-                Customers
-
-            </a>
+                </div>
 
 
-            <a href="<%= request.getContextPath() %>/admin/rentals">
+                <h1 class="dashboard-title">
 
-                Rentals
+                    Welcome back,
+                    <span>
 
-            </a>
+                        <%= HtmlUtil.escape(
+                                adminName
+                        ) %>
 
+                    </span>
 
-            <a href="<%= request.getContextPath() %>/admin/reviews">
-
-                Reviews
-
-            </a>
-
-
-            <a href="<%= request.getContextPath() %>/">
-
-                Home
-
-            </a>
+                </h1>
 
 
-            <a href="<%= request.getContextPath() %>/logout"
-               class="logout">
+                <p class="dashboard-description">
 
-                Logout
+                    Manage the CineRent movie catalogue,
+                    customers, rentals and reviews from
+                    one central administration dashboard.
 
-            </a>
-
-        </div>
-
-    </div>
+                </p>
 
 
-    <!-- =====================================================
-         DASHBOARD OVERVIEW
-    ====================================================== -->
-
-    <div class="section-heading">
-
-        <div>
-
-            <h2>
-                Dashboard Overview
-            </h2>
+            </div>
 
 
-            <div class="section-description">
+            <div class="dashboard-status">
 
-                Live information generated from
-                CineRent text-file storage.
+                ● System Online
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             STATISTICS
+        ====================================================== -->
+
+        <div class="dashboard-section-header">
+
+            <div>
+
+                <h2>
+                    Dashboard Overview
+                </h2>
+
+                <p>
+                    Live information from CineRent
+                    file-based storage.
+                </p>
 
             </div>
 
         </div>
 
-    </div>
+
+        <section class="dashboard-stats">
 
 
-    <!-- =====================================================
-         STATISTICS
-    ====================================================== -->
+            <!-- MOVIES -->
 
-    <div class="statistics">
+            <div class="dashboard-stat-card">
 
+                <div class="dashboard-stat-icon">
+                    🎬
+                </div>
 
-        <!-- MOVIES -->
+                <div class="dashboard-stat-value stat-blue">
 
-        <div class="stat-card">
+                    <%= movieCount %>
 
-            <div class="stat-icon">
+                </div>
 
-                🎬
+                <div class="dashboard-stat-label">
+
+                    Total Movies
+
+                </div>
 
             </div>
 
 
-            <div class="stat-number blue-number">
+            <!-- CUSTOMERS -->
 
+            <div class="dashboard-stat-card">
+
+                <div class="dashboard-stat-icon">
+                    👥
+                </div>
+
+                <div class="dashboard-stat-value stat-blue">
+
+                    <%= customerCount %>
+
+                </div>
+
+                <div class="dashboard-stat-label">
+
+                    Registered Customers
+
+                </div>
+
+            </div>
+
+
+            <!-- ACTIVE RENTALS -->
+
+            <div class="dashboard-stat-card">
+
+                <div class="dashboard-stat-icon">
+                    📀
+                </div>
+
+                <div class="dashboard-stat-value stat-yellow">
+
+                    <%= activeRentalCount %>
+
+                </div>
+
+                <div class="dashboard-stat-label">
+
+                    Active Rentals
+
+                </div>
+
+            </div>
+
+
+            <!-- RETURNED RENTALS -->
+
+            <div class="dashboard-stat-card">
+
+                <div class="dashboard-stat-icon">
+                    ✅
+                </div>
+
+                <div class="dashboard-stat-value stat-green">
+
+                    <%= returnedRentalCount %>
+
+                </div>
+
+                <div class="dashboard-stat-label">
+
+                    Returned Rentals
+
+                </div>
+
+            </div>
+
+
+            <!-- REVIEWS -->
+
+            <div class="dashboard-stat-card">
+
+                <div class="dashboard-stat-icon">
+                    ⭐
+                </div>
+
+                <div class="dashboard-stat-value stat-purple">
+
+                    <%= reviewCount %>
+
+                </div>
+
+                <div class="dashboard-stat-label">
+
+                    Customer Reviews
+
+                </div>
+
+            </div>
+
+
+            <!-- COPIES -->
+
+            <div class="dashboard-stat-card">
+
+                <div class="dashboard-stat-icon">
+                    📦
+                </div>
+
+                <div class="dashboard-stat-value stat-green">
+
+                    <%= availableCopies %>
+
+                </div>
+
+                <div class="dashboard-stat-label">
+
+                    Available Movie Copies
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             MANAGEMENT
+        ====================================================== -->
+
+        <div class="dashboard-section-header">
+
+            <div>
+
+                <h2>
+                    Management
+                </h2>
+
+                <p>
+                    Open a CineRent administration module.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <section class="management-grid">
+
+
+            <!-- =================================================
+                 MOVIE MANAGEMENT
+            ================================================== -->
+
+            <div class="management-card">
+
+
+                <span class="management-status">
+                    ACTIVE
+                </span>
+
+
+                <div class="management-icon">
+                    🎥
+                </div>
+
+
+                <h3>
+                    Movie Management
+                </h3>
+
+
+                <p>
+
+                    Add new movies, edit movie information,
+                    update rental prices, ratings,
+                    descriptions and available copies.
+
+                </p>
+
+
+                <a
+                        href="<%= ctx %>/movies"
+                        class="btn btn-primary"
+                >
+
+                    Manage Movies
+
+                </a>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 CUSTOMER MANAGEMENT
+            ================================================== -->
+
+            <div class="management-card">
+
+
+                <span class="management-status">
+                    ACTIVE
+                </span>
+
+
+                <div class="management-icon">
+                    👥
+                </div>
+
+
+                <h3>
+                    Customer Management
+                </h3>
+
+
+                <p>
+
+                    View registered customers and search
+                    customers using their ID, name,
+                    email address or phone number.
+
+                </p>
+
+
+                <a
+                        href="<%= ctx %>/admin/customers"
+                        class="btn btn-primary"
+                >
+
+                    Manage Customers
+
+                </a>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 RENTAL MANAGEMENT
+            ================================================== -->
+
+            <div class="management-card">
+
+
+                <span class="management-status">
+                    ACTIVE
+                </span>
+
+
+                <div class="management-icon">
+                    📀
+                </div>
+
+
+                <h3>
+                    Rental Management
+                </h3>
+
+
+                <p>
+
+                    View active rentals, returned movies
+                    and the complete CineRent customer
+                    rental history.
+
+                </p>
+
+
+                <a
+                        href="<%= ctx %>/admin/rentals"
+                        class="btn btn-primary"
+                >
+
+                    Manage Rentals
+
+                </a>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 REVIEW MANAGEMENT
+            ================================================== -->
+
+            <div class="management-card">
+
+
+                <span class="management-status">
+                    ACTIVE
+                </span>
+
+
+                <div class="management-icon">
+                    ⭐
+                </div>
+
+
+                <h3>
+                    Review Management
+                </h3>
+
+
+                <p>
+
+                    View customer ratings and comments,
+                    search and filter reviews and remove
+                    inappropriate reviews when required.
+
+                </p>
+
+
+                <a
+                        href="<%= ctx %>/admin/reviews"
+                        class="btn btn-primary"
+                >
+
+                    Manage Reviews
+
+                </a>
+
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             SYSTEM ACTIVITY
+        ====================================================== -->
+
+        <div class="dashboard-section-header">
+
+            <div>
+
+                <h2>
+                    System Activity
+                </h2>
+
+                <p>
+                    Current CineRent activity at a glance.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <section class="system-grid">
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Rental Activity
+                </div>
+
+                <div class="system-value">
+
+                    <%= activeRentalCount %>
+                    Active /
+
+                    <%= returnedRentalCount %>
+                    Returned
+
+                </div>
+
+            </div>
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Total Rental Records
+                </div>
+
+                <div class="system-value">
+
+                    <%= totalRentalCount %>
+                    Rentals
+
+                </div>
+
+            </div>
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Movie Inventory
+                </div>
+
+                <div class="system-value">
+
+                    <%= availableCopies %>
+                    Copies Available
+
+                </div>
+
+            </div>
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Platform Customers
+                </div>
+
+                <div class="system-value">
+
+                    <%= customerCount %>
+                    Customers
+
+                </div>
+
+            </div>
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Customer Feedback
+                </div>
+
+                <div class="system-value">
+
+                    <%= reviewCount %>
+                    Reviews
+
+                </div>
+
+            </div>
+
+
+            <div class="system-item">
+
+                <div class="system-label">
+                    Movie Catalogue
+                </div>
+
+                <div class="system-value">
+
+                    <%= movieCount %>
+                    Movies
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             SYSTEM SUMMARY
+        ====================================================== -->
+
+        <section class="dashboard-summary">
+
+
+            <strong>
+                System Summary:
+            </strong>
+
+
+            CineRent currently contains
+
+            <strong>
                 <%= movieCount %>
+            </strong>
 
-            </div>
+            movies,
 
-
-            <div class="stat-label">
-
-                Total Movies
-
-            </div>
-
-        </div>
-
-
-        <!-- CUSTOMERS -->
-
-        <div class="stat-card">
-
-            <div class="stat-icon">
-
-                👥
-
-            </div>
-
-
-            <div class="stat-number blue-number">
-
+            <strong>
                 <%= customerCount %>
+            </strong>
 
-            </div>
+            registered customers,
 
-
-            <div class="stat-label">
-
-                Registered Customers
-
-            </div>
-
-        </div>
-
-
-        <!-- ACTIVE RENTALS -->
-
-        <div class="stat-card">
-
-            <div class="stat-icon">
-
-                📀
-
-            </div>
-
-
-            <div class="stat-number yellow-number">
-
-                <%= activeRentalCount %>
-
-            </div>
-
-
-            <div class="stat-label">
-
-                Active Rentals
-
-            </div>
-
-        </div>
-
-
-        <!-- RETURNED RENTALS -->
-
-        <div class="stat-card">
-
-            <div class="stat-icon">
-
-                ✅
-
-            </div>
-
-
-            <div class="stat-number green-number">
-
-                <%= returnedRentalCount %>
-
-            </div>
-
-
-            <div class="stat-label">
-
-                Returned Rentals
-
-            </div>
-
-        </div>
-
-
-        <!-- REVIEWS -->
-
-        <div class="stat-card">
-
-            <div class="stat-icon">
-
-                ⭐
-
-            </div>
-
-
-            <div class="stat-number purple-number">
-
-                <%= reviewCount %>
-
-            </div>
-
-
-            <div class="stat-label">
-
-                Customer Reviews
-
-            </div>
-
-        </div>
-
-
-        <!-- AVAILABLE COPIES -->
-
-        <div class="stat-card">
-
-            <div class="stat-icon">
-
-                📦
-
-            </div>
-
-
-            <div class="stat-number green-number">
-
-                <%= availableCopies %>
-
-            </div>
-
-
-            <div class="stat-label">
-
-                Available Movie Copies
-
-            </div>
-
-        </div>
-
-
-    </div>
-
-
-    <!-- =====================================================
-         MANAGEMENT SECTION
-    ====================================================== -->
-
-    <div class="section-heading">
-
-        <div>
-
-            <h2>
-                Management
-            </h2>
-
-
-            <div class="section-description">
-
-                Access all CineRent
-                administration modules.
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <div class="management-grid">
-
-
-        <!-- =================================================
-             MOVIE MANAGEMENT
-        ================================================== -->
-
-        <a class="management-card"
-           href="<%= request.getContextPath() %>/movies">
-
-
-            <div class="management-icon">
-
-                🎥
-
-            </div>
-
-
-            <h3>
-                Movie Management
-            </h3>
-
-
-            <p>
-
-                Add, edit, view and delete movies.
-                Manage rental prices, ratings,
-                descriptions and available copies.
-
-            </p>
-
-
-            <div class="working">
-
-                ● ACTIVE
-
-            </div>
-
-        </a>
-
-
-        <!-- =================================================
-             CUSTOMER MANAGEMENT
-        ================================================== -->
-
-        <a class="management-card"
-           href="<%= request.getContextPath() %>/admin/customers">
-
-
-            <div class="management-icon">
-
-                👥
-
-            </div>
-
-
-            <h3>
-                Customer Management
-            </h3>
-
-
-            <p>
-
-                View registered customers and
-                search using customer ID,
-                name, email or phone number.
-
-            </p>
-
-
-            <div class="working">
-
-                ● ACTIVE
-
-            </div>
-
-        </a>
-
-
-        <!-- =================================================
-             RENTAL MANAGEMENT
-        ================================================== -->
-
-        <a class="management-card"
-           href="<%= request.getContextPath() %>/admin/rentals">
-
-
-            <div class="management-icon">
-
-                📀
-
-            </div>
-
-
-            <h3>
-                Rental Management
-            </h3>
-
-
-            <p>
-
-                View active rentals,
-                returned movies and complete
-                customer rental history.
-
-            </p>
-
-
-            <div class="working">
-
-                ● ACTIVE
-
-            </div>
-
-        </a>
-
-
-        <!-- =================================================
-             REVIEW MANAGEMENT
-        ================================================== -->
-
-        <a class="management-card"
-           href="<%= request.getContextPath() %>/admin/reviews">
-
-
-            <div class="management-icon">
-
-                ⭐
-
-            </div>
-
-
-            <h3>
-                Review Management
-            </h3>
-
-
-            <p>
-
-                View customer ratings,
-                comments and movie reviews.
-                Search, filter and remove
-                reviews when necessary.
-
-            </p>
-
-
-            <div class="working">
-
-                ● ACTIVE
-
-            </div>
-
-        </a>
-
-
-    </div>
-
-
-    <!-- =====================================================
-         SYSTEM ACTIVITY
-    ====================================================== -->
-
-    <div class="section-heading">
-
-        <div>
-
-            <h2>
-                System Activity
-            </h2>
-
-
-            <div class="section-description">
-
-                Current CineRent status
-                at a glance.
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <div class="quick-info">
-
-
-        <!-- RENTAL ACTIVITY -->
-
-        <div class="quick-item">
-
-            <div class="quick-label">
-
-                Rental Activity
-
-            </div>
-
-
-            <div class="quick-value">
-
-                <%= activeRentalCount %>
-                Active /
-
-                <%= returnedRentalCount %>
-                Returned
-
-            </div>
-
-        </div>
-
-
-        <!-- TOTAL RENTALS -->
-
-        <div class="quick-item">
-
-            <div class="quick-label">
-
-                Total Rental Records
-
-            </div>
-
-
-            <div class="quick-value">
-
+            <strong>
                 <%= totalRentalCount %>
-                Rentals
+            </strong>
 
-            </div>
+            rental records,
 
-        </div>
+            <strong>
+                <%= activeRentalCount %>
+            </strong>
 
+            active rentals,
 
-        <!-- MOVIE INVENTORY -->
+            <strong>
+                <%= returnedRentalCount %>
+            </strong>
 
-        <div class="quick-item">
+            returned rentals,
 
-            <div class="quick-label">
-
-                Movie Inventory
-
-            </div>
-
-
-            <div class="quick-value">
-
-                <%= availableCopies %>
-                Copies Available
-
-            </div>
-
-        </div>
-
-
-        <!-- CUSTOMERS -->
-
-        <div class="quick-item">
-
-            <div class="quick-label">
-
-                Platform Customers
-
-            </div>
-
-
-            <div class="quick-value">
-
-                <%= customerCount %>
-                Customers
-
-            </div>
-
-        </div>
-
-
-        <!-- REVIEWS -->
-
-        <div class="quick-item">
-
-            <div class="quick-label">
-
-                Customer Feedback
-
-            </div>
-
-
-            <div class="quick-value">
-
+            <strong>
                 <%= reviewCount %>
-                Reviews
+            </strong>
 
-            </div>
+            customer reviews and
 
-        </div>
+            <strong>
+                <%= availableCopies %>
+            </strong>
 
-
-        <!-- MOVIES -->
-
-        <div class="quick-item">
-
-            <div class="quick-label">
-
-                Movie Catalogue
-
-            </div>
+            available movie copies.
 
 
-            <div class="quick-value">
-
-                <%= movieCount %>
-                Movies
-
-            </div>
-
-        </div>
+        </section>
 
 
     </div>
 
 
-    <!-- =====================================================
-         SYSTEM SUMMARY
-    ====================================================== -->
-
-    <div class="info-box">
+</main>
 
 
-        <strong>
-            System Summary:
-        </strong>
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<jsp:include
+        page="/WEB-INF/views/partials/footer.jsp"
+/>
 
 
-        CineRent currently has
+<script
+        src="<%= ctx %>/js/app.js"
+        defer
+></script>
 
-        <strong>
-            <%= movieCount %>
-        </strong>
-
-        movies,
-
-        <strong>
-            <%= customerCount %>
-        </strong>
-
-        registered customers,
-
-        <strong>
-            <%= totalRentalCount %>
-        </strong>
-
-        rental records,
-
-        <strong>
-            <%= activeRentalCount %>
-        </strong>
-
-        active rentals,
-
-        <strong>
-            <%= returnedRentalCount %>
-        </strong>
-
-        returned rentals,
-
-        <strong>
-            <%= reviewCount %>
-        </strong>
-
-        customer reviews and
-
-        <strong>
-            <%= availableCopies %>
-        </strong>
-
-        movie copies currently available.
-
-
-    </div>
-
-
-    <!-- =====================================================
-         FOOTER
-    ====================================================== -->
-
-    <div class="footer">
-
-        CineRent Movie Rental & Review Platform
-        • Administrator Dashboard
-
-    </div>
-
-
-</div>
 
 </body>
 
