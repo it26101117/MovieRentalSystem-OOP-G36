@@ -48,7 +48,6 @@ public class AdminDashboardServlet extends HttpServlet {
             System.out.println("AdminDashboardServlet reviews file: "+ reviewFilePath );
 
 
-
         } catch (Exception e) {
             throw new ServletException("Failed to initialize AdminDashboardServlet", e);
 
@@ -58,10 +57,8 @@ public class AdminDashboardServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
 
-
      throws ServletException, IOException {
         HttpSession session =request.getSession(false);
-
 
         //Login check
         if ( session == null|| session.getAttribute("loggedUser" ) == null) {
@@ -78,13 +75,9 @@ public class AdminDashboardServlet extends HttpServlet {
         }
 
         List<Movie> movies =movieService.getAllMovies();
-
         List<User> users = userService .getAllUsers();
-
         List<Rental> rentals =rentalService.getAllRentals();
-
         List<Review> reviews =reviewService.getAllReviews();
-
 
         //Movie Count
         int movieCount = movies.size();
