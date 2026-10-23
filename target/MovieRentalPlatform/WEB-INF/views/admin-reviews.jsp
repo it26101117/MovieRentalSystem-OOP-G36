@@ -7,35 +7,16 @@
 <%@ page import="com.movierental.model.User" %>
 <%@ page import="com.movierental.model.Movie" %>
 
+<%@ page import="com.movierental.util.HtmlUtil" %>
+
 <%
-    String adminName =
-            (String) session.getAttribute(
-                    "userName"
-            );
+    String ctx =
+            request.getContextPath();
 
 
-    String role =
-            (String) session.getAttribute(
-                    "role"
-            );
-
-
-    if (
-            adminName == null
-                    ||
-                    role == null
-                    ||
-                    !"ADMIN".equalsIgnoreCase(role)
-    ) {
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/login"
-        );
-
-        return;
-    }
-
+    // =========================================================
+    // DATA
+    // =========================================================
 
     List<Review> reviews =
             (List<Review>)
@@ -72,97 +53,143 @@
                     );
 
 
-    Integer totalReviewCount =
+    Integer totalReviewCountObject =
             (Integer)
                     request.getAttribute(
                             "totalReviewCount"
                     );
 
 
-    Integer filteredCount =
+    Integer filteredCountObject =
             (Integer)
                     request.getAttribute(
                             "filteredCount"
                     );
 
 
-    Integer fiveStarCount =
+    Integer fiveStarCountObject =
             (Integer)
                     request.getAttribute(
                             "fiveStarCount"
                     );
 
 
-    Integer fourStarCount =
+    Integer fourStarCountObject =
             (Integer)
                     request.getAttribute(
                             "fourStarCount"
                     );
 
 
-    Integer threeStarCount =
+    Integer threeStarCountObject =
             (Integer)
                     request.getAttribute(
                             "threeStarCount"
                     );
 
 
-    Integer twoStarCount =
+    Integer twoStarCountObject =
             (Integer)
                     request.getAttribute(
                             "twoStarCount"
                     );
 
 
-    Integer oneStarCount =
+    Integer oneStarCountObject =
             (Integer)
                     request.getAttribute(
                             "oneStarCount"
                     );
 
 
+    // =========================================================
+    // DEFAULT VALUES
+    // =========================================================
+
     if (search == null) {
         search = "";
     }
 
 
-    if (selectedRating == null) {
-        selectedRating = "all";
+    if (
+            selectedRating == null
+                    ||
+                    selectedRating.trim().isEmpty()
+    ) {
+
+        selectedRating =
+                "all";
     }
 
 
-    if (totalReviewCount == null) {
-        totalReviewCount = 0;
-    }
+    int totalReviewCount =
+            totalReviewCountObject == null
+                    ? 0
+                    : totalReviewCountObject;
 
 
-    if (filteredCount == null) {
-        filteredCount = 0;
-    }
+    int filteredCount =
+            filteredCountObject == null
+                    ? 0
+                    : filteredCountObject;
 
 
-    if (fiveStarCount == null) {
-        fiveStarCount = 0;
-    }
+    int fiveStarCount =
+            fiveStarCountObject == null
+                    ? 0
+                    : fiveStarCountObject;
 
 
-    if (fourStarCount == null) {
-        fourStarCount = 0;
-    }
+    int fourStarCount =
+            fourStarCountObject == null
+                    ? 0
+                    : fourStarCountObject;
 
 
-    if (threeStarCount == null) {
-        threeStarCount = 0;
-    }
+    int threeStarCount =
+            threeStarCountObject == null
+                    ? 0
+                    : threeStarCountObject;
 
 
-    if (twoStarCount == null) {
-        twoStarCount = 0;
-    }
+    int twoStarCount =
+            twoStarCountObject == null
+                    ? 0
+                    : twoStarCountObject;
 
 
-    if (oneStarCount == null) {
-        oneStarCount = 0;
+    int oneStarCount =
+            oneStarCountObject == null
+                    ? 0
+                    : oneStarCountObject;
+
+
+    int lowRatingCount =
+            oneStarCount
+                    +
+                    twoStarCount;
+
+
+    double averageRating =
+            0.0;
+
+
+    if (totalReviewCount > 0) {
+
+        averageRating =
+                (
+                        (fiveStarCount * 5.0)
+                                +
+                                (fourStarCount * 4.0)
+                                +
+                                (threeStarCount * 3.0)
+                                +
+                                (twoStarCount * 2.0)
+                                +
+                                oneStarCount
+                )
+                        /
+                        totalReviewCount;
     }
 %>
 
@@ -171,389 +198,1391 @@
 
 <html lang="en">
 
+
 <head>
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
 
     <title>
         Review Management | CineRent
     </title>
 
 
+    <link
+            rel="stylesheet"
+            href="<%= ctx %>/css/style.css"
+    >
+
+
     <style>
 
-        * {
-            box-sizing: border-box;
-        }
-
+        /* =====================================================
+           PAGE
+        ====================================================== */
 
         body {
+            background:
+                    #050811;
+
+            color:
+                    #ffffff;
+        }
+
+
+        .admin-reviews-page {
+            min-height:
+                    calc(100vh - 70px);
+
+            padding:
+                    42px
+                    0
+                    75px;
+
+            background:
+
+                    radial-gradient(
+                            circle at 78% 3%,
+                            rgba(
+                                    124,
+                                    58,
+                                    237,
+                                    0.14
+                            ),
+                            transparent 27%
+                    ),
+
+                    radial-gradient(
+                            circle at 10% 55%,
+                            rgba(
+                                    37,
+                                    99,
+                                    235,
+                                    0.07
+                            ),
+                            transparent 24%
+                    );
+        }
+
+
+        .admin-reviews-container {
+            width:
+                    92%;
+
+            max-width:
+                    1450px;
+
+            margin:
+                    0 auto;
+        }
+
+
+        /* =====================================================
+           HEADER
+        ====================================================== */
+
+        .admin-reviews-header {
+            display:
+                    flex;
+
+            justify-content:
+                    space-between;
+
+            align-items:
+                    flex-end;
+
+            gap:
+                    25px;
+
+            margin-bottom:
+                    30px;
+        }
+
+
+        .admin-reviews-badge {
+            display:
+                    inline-flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    7px;
+
+            padding:
+                    7px
+                    11px;
+
+            margin-bottom:
+                    12px;
+
+            border-radius:
+                    999px;
+
+            color:
+                    #c4b5fd;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.10
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.22
+                    );
+
+            font-size:
+                    10px;
+
+            font-weight:
+                    800;
+
+            text-transform:
+                    uppercase;
+
+            letter-spacing:
+                    0.7px;
+        }
+
+
+        .admin-reviews-title {
             margin: 0;
 
-            font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
+            font-size:
+                    clamp(
+                            34px,
+                            4vw,
+                            48px
+                    );
 
-            background: #0f172a;
-
-            color: white;
+            letter-spacing:
+                    -1.7px;
         }
 
 
-        .container {
-            width: 94%;
+        .admin-reviews-description {
+            margin:
+                    9px
+                    0
+                    0;
 
-            max-width: 1400px;
+            color:
+                    #94a3b8;
 
-            margin: 40px auto;
+            line-height:
+                    1.7;
+
+            font-size:
+                    14px;
         }
 
 
-        /* HEADER */
+        .dashboard-button {
+            min-height:
+                    44px;
 
-        .header {
-            display: flex;
+            display:
+                    inline-flex;
 
-            justify-content: space-between;
+            align-items:
+                    center;
 
-            align-items: center;
+            justify-content:
+                    center;
 
-            gap: 20px;
+            gap:
+                    7px;
 
-            margin-bottom: 30px;
+            padding:
+                    0
+                    16px;
+
+            border-radius:
+                    10px;
+
+            color:
+                    #e2e8f0;
+
+            text-decoration:
+                    none;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.09
+                    );
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    750;
+
+            transition:
+                    0.2s ease;
         }
 
 
-        .header h1 {
-            margin: 0;
+        .dashboard-button:hover {
+            transform:
+                    translateY(-2px);
+
+            border-color:
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.32
+                    );
         }
 
 
-        .subtitle {
-            color: #94a3b8;
+        /* =====================================================
+           STATS
+        ====================================================== */
 
-            margin-top: 8px;
-        }
-
-
-        .nav {
-            display: flex;
-
-            gap: 16px;
-
-            flex-wrap: wrap;
-        }
-
-
-        .nav a {
-            color: #60a5fa;
-
-            text-decoration: none;
-        }
-
-
-        .nav a:hover {
-            text-decoration: underline;
-        }
-
-
-        .logout {
-            color: #f87171 !important;
-        }
-
-
-        /* STATISTICS */
-
-        .statistics {
-            display: grid;
+        .review-stat-grid {
+            display:
+                    grid;
 
             grid-template-columns:
                     repeat(
-                            auto-fit,
-                            minmax(150px, 1fr)
+                            6,
+                            minmax(
+                                    0,
+                                    1fr
+                            )
                     );
 
-            gap: 15px;
+            gap:
+                    14px;
 
-            margin-bottom: 28px;
+            margin-bottom:
+                    28px;
         }
 
 
-        .stat-card {
-            background: #1e293b;
+        .review-stat-card {
+            position:
+                    relative;
 
-            padding: 20px;
+            overflow:
+                    hidden;
 
-            border-radius: 10px;
+            min-height:
+                    145px;
+
+            padding:
+                    19px;
+
+            border-radius:
+                    17px;
+
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.74
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.10
+                    );
+
+            transition:
+                    transform
+                    0.2s ease,
+                    border-color
+                    0.2s ease;
         }
 
 
-        .stat-number {
-            font-size: 28px;
+        .review-stat-card:hover {
+            transform:
+                    translateY(-3px);
 
-            font-weight: bold;
-
-            margin-bottom: 6px;
+            border-color:
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.28
+                    );
         }
 
 
-        .stat-label {
-            color: #94a3b8;
+        .review-stat-card::after {
+            content: "";
 
-            font-size: 13px;
+            position:
+                    absolute;
+
+            width:
+                    95px;
+
+            height:
+                    95px;
+
+            right:
+                    -45px;
+
+            bottom:
+                    -50px;
+
+            border-radius:
+                    50%;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.11
+                    );
         }
 
 
-        .stars {
-            color: #facc15;
+        .review-stat-icon {
+            margin-bottom:
+                    12px;
+
+            font-size:
+                    20px;
         }
 
 
-        /* FILTER */
+        .review-stat-value {
+            margin-bottom:
+                    5px;
 
-        .filter-box {
-            background: #1e293b;
+            font-size:
+                    25px;
 
-            padding: 20px;
-
-            border-radius: 11px;
-
-            margin-bottom: 25px;
+            font-weight:
+                    850;
         }
 
 
-        .filter-form {
-            display: flex;
+        .review-stat-label {
+            color:
+                    #64748b;
 
-            gap: 10px;
+            font-size:
+                    10px;
 
-            flex-wrap: wrap;
-
-            align-items: center;
+            font-weight:
+                    650;
         }
 
 
-        .search-input {
-            flex: 1;
-
-            min-width: 260px;
-
-            background: #0f172a;
-
-            color: white;
-
-            border: 1px solid #475569;
-
-            border-radius: 7px;
-
-            padding: 12px 14px;
+        .stat-purple {
+            color:
+                    #a78bfa;
         }
 
 
-        .rating-select {
-            min-width: 170px;
+        .stat-yellow {
+            color:
+                    #facc15;
+        }
 
-            background: #0f172a;
 
-            color: white;
+        .stat-green {
+            color:
+                    #4ade80;
+        }
 
-            border: 1px solid #475569;
 
-            border-radius: 7px;
+        .stat-blue {
+            color:
+                    #60a5fa;
+        }
 
-            padding: 12px;
+
+        .stat-orange {
+            color:
+                    #fb923c;
+        }
+
+
+        .stat-red {
+            color:
+                    #fb7185;
+        }
+
+
+        /* =====================================================
+           FILTER PANEL
+        ====================================================== */
+
+        .review-filter-panel {
+            margin-bottom:
+                    25px;
+
+            padding:
+                    20px;
+
+            border-radius:
+                    18px;
+
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.64
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.10
+                    );
+        }
+
+
+        .filter-header {
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    space-between;
+
+            gap:
+                    15px;
+
+            margin-bottom:
+                    16px;
+        }
+
+
+        .filter-header h3 {
+            margin: 0;
+
+            font-size:
+                    15px;
+        }
+
+
+        .filter-result-count {
+            padding:
+                    5px
+                    9px;
+
+            border-radius:
+                    999px;
+
+            color:
+                    #c4b5fd;
+
+            background:
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.10
+                    );
+
+            font-size:
+                    9px;
+
+            font-weight:
+                    800;
+        }
+
+
+        .review-filter-form {
+            display:
+                    grid;
+
+            grid-template-columns:
+                    minmax(
+                            0,
+                            2fr
+                    )
+                    minmax(
+                            180px,
+                            0.7fr
+                    )
+                    auto
+                    auto;
+
+            gap:
+                    11px;
+
+            align-items:
+                    center;
+        }
+
+
+        .search-wrapper {
+            position:
+                    relative;
+        }
+
+
+        .search-icon {
+            position:
+                    absolute;
+
+            left:
+                    14px;
+
+            top:
+                    50%;
+
+            transform:
+                    translateY(-50%);
+
+            pointer-events:
+                    none;
+
+            color:
+                    #64748b;
+        }
+
+
+        .review-search,
+        .review-select {
+            width:
+                    100%;
+
+            min-height:
+                    44px;
+
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.16
+                    );
+
+            border-radius:
+                    10px;
+
+            outline:
+                    none;
+
+            background:
+                    rgba(
+                            15,
+                            23,
+                            42,
+                            0.78
+                    );
+
+            color:
+                    #ffffff;
+
+            font-family:
+                    inherit;
+        }
+
+
+        .review-search {
+            padding:
+                    0
+                    14px
+                    0
+                    41px;
+        }
+
+
+        .review-select {
+            padding:
+                    0
+                    12px;
+        }
+
+
+        .review-search:focus,
+        .review-select:focus {
+            border-color:
+                    #8b5cf6;
+
+            box-shadow:
+                    0
+                    0
+                    0
+                    3px
+                    rgba(
+                            139,
+                            92,
+                            246,
+                            0.09
+                    );
+        }
+
+
+        .filter-button,
+        .reset-button {
+            min-height:
+                    44px;
+
+            display:
+                    inline-flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            padding:
+                    0
+                    17px;
+
+            border-radius:
+                    10px;
+
+            cursor:
+                    pointer;
+
+            font-family:
+                    inherit;
+
+            font-size:
+                    11px;
+
+            font-weight:
+                    800;
+
+            text-decoration:
+                    none;
         }
 
 
         .filter-button {
-            background: #2563eb;
+            border:
+                    0;
 
-            color: white;
+            color:
+                    #ffffff;
 
-            border: none;
+            background:
+                    linear-gradient(
+                            135deg,
+                            #6d28d9,
+                            #8b5cf6
+                    );
 
-            padding: 12px 20px;
-
-            border-radius: 7px;
-
-            cursor: pointer;
-
-            font-weight: bold;
+            box-shadow:
+                    0
+                    10px
+                    25px
+                    rgba(
+                            124,
+                            58,
+                            237,
+                            0.18
+                    );
         }
 
 
-        .clear-button {
-            background: #475569;
+        .reset-button {
+            color:
+                    #cbd5e1;
 
-            color: white;
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                    );
 
-            padding: 12px 18px;
-
-            border-radius: 7px;
-
-            text-decoration: none;
+            border:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.08
+                    );
         }
 
 
-        /* TABLE */
+        /* =====================================================
+           TABLE
+        ====================================================== */
 
-        .result-info {
-            color: #94a3b8;
+        .review-table-wrapper {
+            overflow-x:
+                    auto;
 
-            font-size: 14px;
+            border-radius:
+                    18px;
 
-            margin-bottom: 14px;
+            border:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.10
+                    );
+
+            background:
+                    rgba(
+                            23,
+                            33,
+                            54,
+                            0.66
+                    );
         }
 
 
-        .result-info strong {
-            color: white;
+        .review-table {
+            width:
+                    100%;
+
+            min-width:
+                    1150px;
+
+            border-collapse:
+                    collapse;
         }
 
 
-        .table-wrapper {
-            background: #1e293b;
+        .review-table th {
+            padding:
+                    14px
+                    16px;
 
-            border-radius: 12px;
+            text-align:
+                    left;
 
-            overflow-x: auto;
+            background:
+                    rgba(
+                            51,
+                            65,
+                            85,
+                            0.62
+                    );
+
+            color:
+                    #94a3b8;
+
+            font-size:
+                    9px;
+
+            font-weight:
+                    800;
+
+            text-transform:
+                    uppercase;
+
+            letter-spacing:
+                    0.7px;
+
+            white-space:
+                    nowrap;
         }
 
 
-        table {
-            width: 100%;
+        .review-table td {
+            padding:
+                    16px;
 
-            min-width: 1150px;
+            vertical-align:
+                    middle;
 
-            border-collapse: collapse;
+            border-bottom:
+                    1px solid
+                    rgba(
+                            148,
+                            163,
+                            184,
+                            0.08
+                    );
         }
 
 
-        th {
-            background: #172033;
-
-            color: #94a3b8;
-
-            padding: 15px;
-
-            text-align: left;
-
-            text-transform: uppercase;
-
-            font-size: 12px;
+        .review-table tbody tr {
+            transition:
+                    background
+                    0.2s ease;
         }
 
 
-        td {
-            padding: 16px 15px;
-
-            border-top: 1px solid #334155;
-
-            vertical-align: top;
+        .review-table tbody tr:hover {
+            background:
+                    rgba(
+                            51,
+                            65,
+                            85,
+                            0.25
+                    );
         }
 
 
-        tr:hover {
-            background: #263449;
+        .review-table tbody tr:last-child td {
+            border-bottom:
+                    none;
+        }
+
+
+        /* =====================================================
+           CUSTOMER
+        ====================================================== */
+
+        .customer-cell {
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    11px;
+
+            min-width:
+                    180px;
+        }
+
+
+        .customer-avatar {
+            width:
+                    39px;
+
+            height:
+                    39px;
+
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            flex-shrink:
+                    0;
+
+            border-radius:
+                    50%;
+
+            color:
+                    #ffffff;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            #7c3aed,
+                            #3b82f6
+                    );
+
+            font-size:
+                    12px;
+
+            font-weight:
+                    850;
+        }
+
+
+        .customer-name {
+            margin-bottom:
+                    4px;
+
+            color:
+                    #ffffff;
+
+            font-size:
+                    12px;
+
+            font-weight:
+                    750;
+        }
+
+
+        .customer-meta {
+            color:
+                    #64748b;
+
+            font-size:
+                    9px;
+
+            line-height:
+                    1.5;
+        }
+
+
+        /* =====================================================
+           MOVIE
+        ====================================================== */
+
+        .movie-cell {
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    11px;
+
+            min-width:
+                    195px;
+        }
+
+
+        .movie-poster-small {
+            width:
+                    45px;
+
+            height:
+                    66px;
+
+            flex-shrink:
+                    0;
+
+            overflow:
+                    hidden;
+
+            border-radius:
+                    8px;
+
+            background:
+                    #111827;
+
+            border:
+                    1px solid
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.07
+                    );
+        }
+
+
+        .movie-poster-small img {
+            width:
+                    100%;
+
+            height:
+                    100%;
+
+            display:
+                    block;
+
+            object-fit:
+                    cover;
+        }
+
+
+        .movie-name {
+            margin-bottom:
+                    4px;
+
+            font-size:
+                    12px;
+
+            font-weight:
+                    750;
+        }
+
+
+        .movie-id {
+            color:
+                    #64748b;
+
+            font-size:
+                    9px;
+        }
+
+
+        /* =====================================================
+           REVIEW DETAILS
+        ====================================================== */
+
+        .rating-stars {
+            color:
+                    #facc15;
+
+            letter-spacing:
+                    1px;
+
+            white-space:
+                    nowrap;
+
+            font-size:
+                    13px;
+        }
+
+
+        .rating-number {
+            margin-top:
+                    4px;
+
+            color:
+                    #94a3b8;
+
+            font-size:
+                    9px;
+        }
+
+
+        .review-comment-cell {
+            max-width:
+                    320px;
+
+            color:
+                    #cbd5e1;
+
+            font-size:
+                    11px;
+
+            line-height:
+                    1.65;
+        }
+
+
+        .review-date {
+            color:
+                    #94a3b8;
+
+            font-size:
+                    10px;
+
+            white-space:
+                    nowrap;
         }
 
 
         .review-id {
-            color: #60a5fa;
+            display:
+                    inline-flex;
 
-            font-weight: bold;
+            margin-top:
+                    5px;
+
+            padding:
+                    3px
+                    6px;
+
+            border-radius:
+                    6px;
+
+            background:
+                    rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                    );
+
+            color:
+                    #64748b;
+
+            font-size:
+                    8px;
         }
 
 
-        .movie-title {
-            font-weight: bold;
+        /* =====================================================
+           DELETE
+        ====================================================== */
+
+        .delete-review-form {
+            margin: 0;
         }
 
 
-        .sub-text {
-            color: #94a3b8;
+        .delete-review-button {
+            min-height:
+                    35px;
 
-            font-size: 12px;
+            padding:
+                    0
+                    12px;
 
-            margin-top: 4px;
+            border-radius:
+                    8px;
+
+            border:
+                    1px solid
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.22
+                    );
+
+            color:
+                    #fca5a5;
+
+            background:
+                    rgba(
+                            239,
+                            68,
+                            68,
+                            0.08
+                    );
+
+            cursor:
+                    pointer;
+
+            font-family:
+                    inherit;
+
+            font-size:
+                    10px;
+
+            font-weight:
+                    800;
+
+            transition:
+                    0.2s ease;
         }
 
 
-        .rating {
-            color: #facc15;
+        .delete-review-button:hover {
+            color:
+                    #ffffff;
 
-            font-weight: bold;
-
-            white-space: nowrap;
+            background:
+                    #dc2626;
         }
 
 
-        .comment {
-            color: #cbd5e1;
+        /* =====================================================
+           EMPTY
+        ====================================================== */
 
-            line-height: 1.5;
+        .review-empty {
+            padding:
+                    60px
+                    20px
+            !important;
 
-            max-width: 350px;
+            text-align:
+                    center;
 
-            word-wrap: break-word;
+            color:
+                    #94a3b8;
         }
 
 
-        /* DELETE */
+        .review-empty-icon {
+            margin-bottom:
+                    10px;
 
-        .delete-button {
-            background: #dc2626;
-
-            color: white;
-
-            border: none;
-
-            padding: 8px 12px;
-
-            border-radius: 6px;
-
-            cursor: pointer;
-
-            font-weight: bold;
+            font-size:
+                    40px;
         }
 
 
-        .delete-button:hover {
-            background: #b91c1c;
+        /* =====================================================
+           SUMMARY
+        ====================================================== */
+
+        .review-summary {
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            gap:
+                    12px;
+
+            margin-top:
+                    20px;
+
+            padding:
+                    15px
+                    17px;
+
+            border-radius:
+                    13px;
+
+            color:
+                    #94a3b8;
+
+            background:
+                    rgba(
+                            59,
+                            130,
+                            246,
+                            0.05
+                    );
+
+            border:
+                    1px solid
+                    rgba(
+                            59,
+                            130,
+                            246,
+                            0.12
+                    );
+
+            font-size:
+                    11px;
         }
 
 
-        .empty {
-            padding: 45px;
+        .summary-icon {
+            width:
+                    35px;
 
-            text-align: center;
+            height:
+                    35px;
 
-            color: #94a3b8;
+            display:
+                    flex;
+
+            align-items:
+                    center;
+
+            justify-content:
+                    center;
+
+            flex-shrink:
+                    0;
+
+            border-radius:
+                    9px;
+
+            background:
+                    rgba(
+                            59,
+                            130,
+                            246,
+                            0.10
+                    );
         }
 
 
-        @media (max-width: 700px) {
+        /* =====================================================
+           RESPONSIVE
+        ====================================================== */
 
-            .header {
-                flex-direction: column;
+        @media (
+        max-width: 1200px
+        ) {
 
-                align-items: flex-start;
+            .review-stat-grid {
+                grid-template-columns:
+                        repeat(
+                                3,
+                                1fr
+                        );
+            }
+
+        }
+
+
+        @media (
+        max-width: 800px
+        ) {
+
+            .review-filter-form {
+                grid-template-columns:
+                        1fr
+                        1fr;
             }
 
 
-            .filter-form {
-                flex-direction: column;
+            .review-search-wrapper {
+                grid-column:
+                        1 / -1;
+            }
 
-                align-items: stretch;
+        }
+
+
+        @media (
+        max-width: 650px
+        ) {
+
+            .admin-reviews-header {
+                flex-direction:
+                        column;
+
+                align-items:
+                        flex-start;
             }
 
 
-            .search-input {
-                min-width: 100%;
+            .dashboard-button {
+                width:
+                        100%;
+            }
+
+
+            .review-stat-grid {
+                grid-template-columns:
+                        1fr
+                        1fr;
+            }
+
+
+            .review-filter-form {
+                grid-template-columns:
+                        1fr;
+            }
+
+
+            .review-filter-form > * {
+                width:
+                        100%;
+            }
+
+
+            .review-search-wrapper {
+                grid-column:
+                        auto;
+            }
+
+        }
+
+
+        @media (
+        max-width: 430px
+        ) {
+
+            .review-stat-grid {
+                grid-template-columns:
+                        1fr;
             }
 
         }
@@ -565,502 +1594,1026 @@
 
 <body>
 
-<div class="container">
+
+<!-- =========================================================
+     ADMIN NAVIGATION
+========================================================= -->
+
+<jsp:include
+        page="/WEB-INF/views/partials/admin-nav.jsp"
+/>
 
 
-    <!-- HEADER -->
+<!-- =========================================================
+     PAGE
+========================================================= -->
 
-    <div class="header">
-
-        <div>
-
-            <h1>
-                ⭐ Review Management
-            </h1>
-
-            <p class="subtitle">
-                Monitor customer ratings,
-                comments and movie reviews.
-            </p>
-
-        </div>
+<main class="admin-reviews-page">
 
 
-        <div class="nav">
-
-            <a href="<%= request.getContextPath() %>/admin">
-                Dashboard
-            </a>
-
-            <a href="<%= request.getContextPath() %>/movies">
-                Movies
-            </a>
-
-            <a href="<%= request.getContextPath() %>/admin/customers">
-                Customers
-            </a>
-
-            <a href="<%= request.getContextPath() %>/admin/rentals">
-                Rentals
-            </a>
-
-            <a href="<%= request.getContextPath() %>/logout"
-               class="logout">
-                Logout
-            </a>
-
-        </div>
-
-    </div>
+    <div class="admin-reviews-container">
 
 
-    <!-- STATISTICS -->
+        <!-- =====================================================
+             HEADER
+        ====================================================== -->
 
-    <div class="statistics">
+        <section class="admin-reviews-header">
 
 
-        <div class="stat-card">
+            <div>
 
-            <div class="stat-number">
-                <%= totalReviewCount %>
+
+                <div class="admin-reviews-badge">
+
+                    ⭐ Review Administration
+
+                </div>
+
+
+                <h1 class="admin-reviews-title">
+
+                    Reviews
+
+                </h1>
+
+
+                <p class="admin-reviews-description">
+
+                    Monitor customer feedback,
+                    search reviews, filter ratings
+                    and manage inappropriate content.
+
+                </p>
+
+
             </div>
 
-            <div class="stat-label">
-                Total Reviews
-            </div>
 
-        </div>
+            <a
+                    href="<%= ctx %>/admin"
+                    class="dashboard-button"
+            >
 
-
-        <div class="stat-card">
-
-            <div class="stat-number stars">
-                <%= fiveStarCount %>
-            </div>
-
-            <div class="stat-label">
-                ⭐⭐⭐⭐⭐ Reviews
-            </div>
-
-        </div>
-
-
-        <div class="stat-card">
-
-            <div class="stat-number stars">
-                <%= fourStarCount %>
-            </div>
-
-            <div class="stat-label">
-                ⭐⭐⭐⭐ Reviews
-            </div>
-
-        </div>
-
-
-        <div class="stat-card">
-
-            <div class="stat-number">
-                <%= threeStarCount %>
-            </div>
-
-            <div class="stat-label">
-                ⭐⭐⭐ Reviews
-            </div>
-
-        </div>
-
-
-        <div class="stat-card">
-
-            <div class="stat-number">
-                <%= twoStarCount + oneStarCount %>
-            </div>
-
-            <div class="stat-label">
-                Low Rated Reviews
-            </div>
-
-        </div>
-
-
-    </div>
-
-
-    <!-- FILTER -->
-
-    <div class="filter-box">
-
-        <form method="get"
-              action="<%= request.getContextPath() %>/admin/reviews"
-              class="filter-form">
-
-
-            <input type="text"
-                   name="search"
-                   class="search-input"
-                   value="<%= search %>"
-                   placeholder="Search customer, movie, review ID or comment">
-
-
-            <select name="rating"
-                    class="rating-select">
-
-
-                <option value="all"
-                        <%= "all".equalsIgnoreCase(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    All Ratings
-
-                </option>
-
-
-                <option value="5"
-                        <%= "5".equals(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐⭐⭐ 5 Stars
-
-                </option>
-
-
-                <option value="4"
-                        <%= "4".equals(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐⭐ 4 Stars
-
-                </option>
-
-
-                <option value="3"
-                        <%= "3".equals(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐⭐ 3 Stars
-
-                </option>
-
-
-                <option value="2"
-                        <%= "2".equals(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐⭐ 2 Stars
-
-                </option>
-
-
-                <option value="1"
-                        <%= "1".equals(selectedRating)
-                                ? "selected"
-                                : "" %>>
-
-                    ⭐ 1 Star
-
-                </option>
-
-            </select>
-
-
-            <button type="submit"
-                    class="filter-button">
-
-                Filter
-
-            </button>
-
-
-            <a href="<%= request.getContextPath() %>/admin/reviews"
-               class="clear-button">
-
-                Clear
+                ← Dashboard
 
             </a>
 
-        </form>
 
-    </div>
+        </section>
 
 
-    <div class="result-info">
+        <!-- =====================================================
+             REVIEW STATISTICS
+        ====================================================== -->
 
-        Showing
+        <section class="review-stat-grid">
 
-        <strong>
-            <%= filteredCount %>
-        </strong>
 
-        review(s).
+            <!-- TOTAL -->
 
-    </div>
+            <div class="review-stat-card">
 
 
-    <!-- REVIEW TABLE -->
+                <div class="review-stat-icon">
 
-    <div class="table-wrapper">
+                    💬
 
+                </div>
 
-        <%
-            if (
-                    reviews == null
-                            ||
-                            reviews.isEmpty()
-            ) {
-        %>
 
+                <div class="review-stat-value stat-purple">
 
-        <div class="empty">
+                    <%= totalReviewCount %>
 
-            <h3>
-                No Reviews Found
-            </h3>
+                </div>
 
-            <p>
-                No reviews match the current
-                search or rating filter.
-            </p>
 
-        </div>
+                <div class="review-stat-label">
 
+                    Total Reviews
 
-        <%
-        } else {
-        %>
+                </div>
 
 
-        <table>
+            </div>
 
-            <thead>
 
-            <tr>
+            <!-- AVERAGE -->
 
-                <th>Review ID</th>
+            <div class="review-stat-card">
 
-                <th>Customer</th>
 
-                <th>Movie</th>
+                <div class="review-stat-icon">
 
-                <th>Rating</th>
+                    ⭐
 
-                <th>Comment</th>
+                </div>
 
-                <th>Date</th>
 
-                <th>Action</th>
+                <div class="review-stat-value stat-yellow">
 
-            </tr>
+                    <%= String.format(
+                            "%.1f",
+                            averageRating
+                    ) %>
 
-            </thead>
+                </div>
 
 
-            <tbody>
+                <div class="review-stat-label">
 
+                    Average Rating
 
-            <%
-                for (Review review : reviews) {
+                </div>
 
-                    User customer =
-                            userMap != null
-                                    ? userMap.get(
-                                    review.getUserId()
-                            )
-                                    : null;
 
+            </div>
 
-                    Movie movie =
-                            movieMap != null
-                                    ? movieMap.get(
-                                    review.getMovieId()
-                            )
-                                    : null;
-            %>
 
+            <!-- FIVE STAR -->
 
-            <tr>
+            <div class="review-stat-card">
 
 
-                <td class="review-id">
+                <div class="review-stat-icon">
 
-                    <%= review.getReviewId() %>
+                    🌟
 
-                </td>
+                </div>
 
 
-                <!-- CUSTOMER -->
+                <div class="review-stat-value stat-green">
 
-                <td>
+                    <%= fiveStarCount %>
 
-                    <%
-                        if (customer != null) {
-                    %>
+                </div>
 
-                    <strong>
-                        <%= customer.getName() %>
-                    </strong>
 
-                    <div class="sub-text">
+                <div class="review-stat-label">
 
-                        <%= customer.getUserId() %>
+                    5 Star Reviews
 
-                        •
+                </div>
 
-                        <%= customer.getEmail() %>
 
-                    </div>
+            </div>
 
-                    <%
-                    } else {
-                    %>
 
-                    Unknown Customer
+            <!-- FOUR STAR -->
 
-                    <div class="sub-text">
-                        <%= review.getUserId() %>
-                    </div>
+            <div class="review-stat-card">
 
-                    <%
-                        }
-                    %>
 
-                </td>
+                <div class="review-stat-icon">
 
+                    ⭐
 
-                <!-- MOVIE -->
+                </div>
 
-                <td>
 
-                    <%
-                        if (movie != null) {
-                    %>
+                <div class="review-stat-value stat-blue">
 
-                    <div class="movie-title">
+                    <%= fourStarCount %>
 
-                        <%= movie.getTitle() %>
+                </div>
 
-                    </div>
 
-                    <div class="sub-text">
+                <div class="review-stat-label">
 
-                        <%= movie.getMovieId() %>
+                    4 Star Reviews
 
-                    </div>
+                </div>
 
-                    <%
-                    } else {
-                    %>
 
-                    Unknown Movie
+            </div>
 
-                    <div class="sub-text">
 
-                        <%= review.getMovieId() %>
+            <!-- THREE STAR -->
 
-                    </div>
+            <div class="review-stat-card">
 
-                    <%
-                        }
-                    %>
 
-                </td>
+                <div class="review-stat-icon">
+
+                    ⭐
+
+                </div>
+
+
+                <div class="review-stat-value stat-orange">
+
+                    <%= threeStarCount %>
+
+                </div>
+
+
+                <div class="review-stat-label">
+
+                    3 Star Reviews
+
+                </div>
+
+
+            </div>
+
+
+            <!-- LOW RATINGS -->
+
+            <div class="review-stat-card">
+
+
+                <div class="review-stat-icon">
+
+                    ⚠️
+
+                </div>
+
+
+                <div class="review-stat-value stat-red">
+
+                    <%= lowRatingCount %>
+
+                </div>
+
+
+                <div class="review-stat-label">
+
+                    1–2 Star Reviews
+
+                </div>
+
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             SEARCH + FILTER
+        ====================================================== -->
+
+        <section class="review-filter-panel">
+
+
+            <div class="filter-header">
+
+
+                <h3>
+
+                    Search & Filter Reviews
+
+                </h3>
+
+
+                <span class="filter-result-count">
+
+                    <%= filteredCount %>
+                    result<%= filteredCount == 1
+                        ? ""
+                        : "s" %>
+
+                </span>
+
+
+            </div>
+
+
+            <form
+                    method="get"
+                    action="<%= ctx %>/admin/reviews"
+                    class="review-filter-form"
+            >
+
+
+                <!-- SEARCH -->
+
+                <div class="search-wrapper review-search-wrapper">
+
+
+                    <span class="search-icon">
+
+                        🔍
+
+                    </span>
+
+
+                    <input
+                            type="search"
+                            name="search"
+                            class="review-search"
+                            placeholder="Search customer, movie, review ID or comment..."
+                            value="<%= HtmlUtil.escape(
+                                    search
+                            ) %>"
+                            autocomplete="off"
+                    >
+
+
+                </div>
 
 
                 <!-- RATING -->
 
-                <td>
-
-                    <span class="rating">
-
-                        ⭐
-                        <%= review.getRating() %>
-                        / 5
-
-                    </span>
-
-                </td>
+                <select
+                        name="rating"
+                        class="review-select"
+                >
 
 
-                <!-- COMMENT -->
+                    <option
+                            value="all"
+                            <%= "all".equalsIgnoreCase(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
 
-                <td>
+                        All Ratings
 
-                    <div class="comment">
-
-                        <%= review.getComment() %>
-
-                    </div>
-
-                </td>
-
-
-                <!-- DATE -->
-
-                <td>
-
-                    <%= review.getReviewDate() %>
-
-                </td>
+                    </option>
 
 
-                <!-- DELETE -->
+                    <option
+                            value="5"
+                            <%= "5".equals(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
 
-                <td>
+                        ★★★★★ 5 Stars
 
-                    <form method="post"
-                          action="<%= request.getContextPath() %>/admin/reviews">
-
-
-                        <input type="hidden"
-                               name="action"
-                               value="delete">
-
-
-                        <input type="hidden"
-                               name="reviewId"
-                               value="<%= review.getReviewId() %>">
+                    </option>
 
 
-                        <button type="submit"
-                                class="delete-button"
-                                onclick="return confirm('Are you sure you want to delete this review?');">
+                    <option
+                            value="4"
+                            <%= "4".equals(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
 
-                            Delete
+                        ★★★★☆ 4 Stars
 
-                        </button>
-
-                    </form>
-
-                </td>
-
-
-            </tr>
+                    </option>
 
 
-            <%
-                }
-            %>
+                    <option
+                            value="3"
+                            <%= "3".equals(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
+
+                        ★★★☆☆ 3 Stars
+
+                    </option>
 
 
-            </tbody>
+                    <option
+                            value="2"
+                            <%= "2".equals(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
 
-        </table>
+                        ★★☆☆☆ 2 Stars
+
+                    </option>
 
 
-        <%
-            }
-        %>
+                    <option
+                            value="1"
+                            <%= "1".equals(
+                                    selectedRating
+                            )
+                                    ? "selected"
+                                    : "" %>
+                    >
+
+                        ★☆☆☆☆ 1 Star
+
+                    </option>
+
+
+                </select>
+
+
+                <!-- FILTER -->
+
+                <button
+                        type="submit"
+                        class="filter-button"
+                >
+
+                    Filter
+
+                </button>
+
+
+                <!-- RESET -->
+
+                <a
+                        href="<%= ctx %>/admin/reviews"
+                        class="reset-button"
+                >
+
+                    Reset
+
+                </a>
+
+
+            </form>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             REVIEW TABLE
+        ====================================================== -->
+
+        <section class="review-table-wrapper">
+
+
+            <table class="review-table">
+
+
+                <thead>
+
+
+                <tr>
+
+                    <th>
+                        Customer
+                    </th>
+
+                    <th>
+                        Movie
+                    </th>
+
+                    <th>
+                        Rating
+                    </th>
+
+                    <th>
+                        Comment
+                    </th>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
+                </tr>
+
+
+                </thead>
+
+
+                <tbody>
+
+
+                <%
+                    if (
+                            reviews == null
+                                    ||
+                                    reviews.isEmpty()
+                    ) {
+                %>
+
+
+                <!-- =================================================
+                     EMPTY
+                ================================================== -->
+
+                <tr>
+
+
+                    <td
+                            colspan="6"
+                            class="review-empty"
+                    >
+
+
+                        <div class="review-empty-icon">
+
+                            🔍
+
+                        </div>
+
+
+                        <strong>
+
+                            No reviews found.
+
+                        </strong>
+
+
+                        <div
+                                style="
+                                    margin-top:7px;
+                                "
+                        >
+
+                            Try changing your
+                            search or rating filter.
+
+                        </div>
+
+
+                    </td>
+
+
+                </tr>
+
+
+                <%
+                } else {
+
+
+                    for (
+                            Review review : reviews
+                    ) {
+
+
+                        User user =
+                                userMap == null
+                                        ? null
+                                        : userMap.get(
+                                        review.getUserId()
+                                );
+
+
+                        Movie movie =
+                                movieMap == null
+                                        ? null
+                                        : movieMap.get(
+                                        review.getMovieId()
+                                );
+
+
+                        String customerName =
+                                user != null
+                                        &&
+                                        user.getName() != null
+                                        &&
+                                        !user.getName()
+                                                .trim()
+                                                .isEmpty()
+                                        ? user.getName()
+                                        : review.getUserId();
+
+
+                        String customerEmail =
+                                user != null
+                                        &&
+                                        user.getEmail() != null
+                                        ? user.getEmail()
+                                        : "";
+
+
+                        String customerInitial =
+                                "C";
+
+
+                        if (
+                                customerName != null
+                                        &&
+                                        !customerName
+                                                .trim()
+                                                .isEmpty()
+                        ) {
+
+                            customerInitial =
+                                    customerName
+                                            .trim()
+                                            .substring(
+                                                    0,
+                                                    1
+                                            )
+                                            .toUpperCase();
+                        }
+
+
+                        String movieTitle =
+                                movie != null
+                                        &&
+                                        movie.getTitle() != null
+                                        ? movie.getTitle()
+                                        : review.getMovieId();
+
+
+                        String movieId =
+                                review.getMovieId() == null
+                                        ? ""
+                                        : review.getMovieId();
+                %>
+
+
+                <!-- =================================================
+                     REVIEW ROW
+                ================================================== -->
+
+                <tr>
+
+
+                    <!-- =============================================
+                         CUSTOMER
+                    ============================================== -->
+
+                    <td>
+
+
+                        <div class="customer-cell">
+
+
+                            <div class="customer-avatar">
+
+                                <%= HtmlUtil.escape(
+                                        customerInitial
+                                ) %>
+
+                            </div>
+
+
+                            <div>
+
+
+                                <div class="customer-name">
+
+                                    <%= HtmlUtil.escape(
+                                            customerName
+                                    ) %>
+
+                                </div>
+
+
+                                <div class="customer-meta">
+
+                                    ID:
+                                    <%= HtmlUtil.escape(
+                                            review.getUserId()
+                                    ) %>
+
+
+                                    <%
+                                        if (
+                                                customerEmail != null
+                                                        &&
+                                                        !customerEmail
+                                                                .trim()
+                                                                .isEmpty()
+                                        ) {
+                                    %>
+
+                                    <br>
+
+                                    <%= HtmlUtil.escape(
+                                            customerEmail
+                                    ) %>
+
+                                    <%
+                                        }
+                                    %>
+
+
+                                </div>
+
+
+                            </div>
+
+
+                        </div>
+
+
+                    </td>
+
+
+                    <!-- =============================================
+                         MOVIE
+                    ============================================== -->
+
+                    <td>
+
+
+                        <div class="movie-cell">
+
+
+                            <div class="movie-poster-small">
+
+
+                                <img
+                                        src="<%= ctx %>/movie-image?id=<%= HtmlUtil.escape(
+                                                movieId
+                                        ) %>"
+
+                                        alt="<%= HtmlUtil.escape(
+                                                movieTitle
+                                        ) %>"
+
+                                        loading="lazy"
+
+                                        onerror="
+                                                this.onerror=null;
+                                                this.src='<%= ctx %>/images/posters/default.svg';
+                                                "
+                                >
+
+
+                            </div>
+
+
+                            <div>
+
+
+                                <div class="movie-name">
+
+                                    <%= HtmlUtil.escape(
+                                            movieTitle
+                                    ) %>
+
+                                </div>
+
+
+                                <div class="movie-id">
+
+                                    ID:
+                                    <%= HtmlUtil.escape(
+                                            movieId
+                                    ) %>
+
+                                </div>
+
+
+                            </div>
+
+
+                        </div>
+
+
+                    </td>
+
+
+                    <!-- =============================================
+                         RATING
+                    ============================================== -->
+
+                    <td>
+
+
+                        <div class="rating-stars">
+
+
+                            <%
+                                for (
+                                        int star = 1;
+                                        star <= 5;
+                                        star++
+                                ) {
+                            %>
+
+
+                            <%= star
+                                    <=
+                                    review.getRating()
+                                    ? "★"
+                                    : "☆" %>
+
+
+                            <%
+                                }
+                            %>
+
+
+                        </div>
+
+
+                        <div class="rating-number">
+
+                            <%= review.getRating() %>
+                            / 5
+
+                        </div>
+
+
+                    </td>
+
+
+                    <!-- =============================================
+                         COMMENT
+                    ============================================== -->
+
+                    <td>
+
+
+                        <div class="review-comment-cell">
+
+                            <%
+                                if (
+                                        review.getComment()
+                                                == null
+                                                ||
+                                                review.getComment()
+                                                        .trim()
+                                                        .isEmpty()
+                                ) {
+                            %>
+
+                            <span
+                                    style="
+                                        color:#64748b;
+                                    "
+                            >
+
+                                No comment
+
+                            </span>
+
+                            <%
+                            } else {
+                            %>
+
+                            <%= HtmlUtil.escape(
+                                    review.getComment()
+                            ) %>
+
+                            <%
+                                }
+                            %>
+
+
+                        </div>
+
+
+                    </td>
+
+
+                    <!-- =============================================
+                         DATE
+                    ============================================== -->
+
+                    <td>
+
+
+                        <div class="review-date">
+
+                            <%= HtmlUtil.escape(
+                                    review.getReviewDate()
+                            ) %>
+
+                        </div>
+
+
+                        <div class="review-id">
+
+                            <%= HtmlUtil.escape(
+                                    review.getReviewId()
+                            ) %>
+
+                        </div>
+
+
+                    </td>
+
+
+                    <!-- =============================================
+                         ACTION
+                    ============================================== -->
+
+                    <td>
+
+
+                        <form
+                                method="post"
+                                action="<%= ctx %>/admin/reviews"
+                                class="delete-review-form"
+                                data-confirm="Are you sure you want to delete this customer review?"
+                        >
+
+
+                            <input
+                                    type="hidden"
+                                    name="action"
+                                    value="delete"
+                            >
+
+
+                            <input
+                                    type="hidden"
+                                    name="reviewId"
+                                    value="<%= HtmlUtil.escape(
+                                            review.getReviewId()
+                                    ) %>"
+                            >
+
+
+                            <button
+                                    type="submit"
+                                    class="delete-review-button"
+                            >
+
+                                🗑 Delete
+
+                            </button>
+
+
+                        </form>
+
+
+                    </td>
+
+
+                </tr>
+
+
+                <%
+                        }
+                    }
+                %>
+
+
+                </tbody>
+
+
+            </table>
+
+
+        </section>
+
+
+        <!-- =====================================================
+             INFO
+        ====================================================== -->
+
+        <div class="review-summary">
+
+
+            <div class="summary-icon">
+
+                💡
+
+            </div>
+
+
+            <div>
+
+                Showing
+
+                <strong>
+                    <%= filteredCount %>
+                </strong>
+
+                of
+
+                <strong>
+                    <%= totalReviewCount %>
+                </strong>
+
+                customer reviews.
+
+                Deleting a review will also allow
+                CineRent to recalculate that movie's
+                average rating.
+
+            </div>
+
+
+        </div>
 
 
     </div>
 
 
-</div>
+</main>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<jsp:include
+        page="/WEB-INF/views/partials/footer.jsp"
+/>
+
+
+<script
+        src="<%= ctx %>/js/app.js"
+></script>
+
 
 </body>
 
