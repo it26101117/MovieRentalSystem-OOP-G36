@@ -33,21 +33,13 @@
 
         response.sendRedirect( ctx + "/login");
 
-
-
         return;
     }
 
 
-    if (
-            !"CUSTOMER".equalsIgnoreCase(
-                    role
-            )
-    ) {
+    if (            !"CUSTOMER".equalsIgnoreCase( role   )    ) {
 
-        response.sendRedirect(
-                ctx + "/admin"
-        );
+        response.sendRedirect(ctx + "/admin" );
 
         return;
     }
@@ -56,44 +48,22 @@
 
 
     if (movie == null) {
-
-        response.sendRedirect(
-                ctx + "/catalog?error=notfound"
-        );
+             response.sendRedirect(ctx + "/catalog?error=notfound" );
 
         return;
     }
 
 
 
-    String userInitial =
-            "U";
+    String userInitial = "U";
 
+    if (userName != null  && !userName.trim().isEmpty() ) {
 
-    if (
-            userName != null
-                    &&
-                    !userName.trim().isEmpty()
-    ) {
+        userInitial =  userName .trim().substring(  0,1   ).toUpperCase();
 
-        userInitial =
-                userName
-                        .trim()
-                        .substring(
-                                0,
-                                1
-                        )
-                        .toUpperCase();
     }
 
-
-
-
-    int reviewCount =
-            reviews == null
-                    ? 0
-                    : reviews.size();
-%>
+    int reviewCount = reviews == null ? 0: reviews.size(); %>
 
 
 <!DOCTYPE html>
@@ -436,23 +406,16 @@
 
             border:
                     1px solid
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.10
-                    );
+                    rgba(255,255, 255, 0.10  );
+
 
             color:
                     #cbd5e1;
 
             background:
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.04
-                    );
+                    rgba(  255, 255,  255, 0.04   );
+
+
 
             text-decoration:
                     none;
