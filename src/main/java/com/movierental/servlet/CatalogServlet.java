@@ -55,9 +55,9 @@ public class CatalogServlet extends HttpServlet {
                 request.getSession(false);
 
 
-        // =====================================================
+
         // LOGIN CHECK
-        // =====================================================
+
 
         if (
                 session == null
@@ -73,9 +73,8 @@ public class CatalogServlet extends HttpServlet {
         }
 
 
-        // =====================================================
         // CUSTOMER ACCESS ONLY
-        // =====================================================
+
 
         String role =
                 (String)

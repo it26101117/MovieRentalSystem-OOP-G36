@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.util.List" %>
@@ -998,3 +999,5 @@
 <script src="<%= ctx %>/js/app.js" defer></script>
 </body>
 </html>
+
+>>>>>>> origin/main
