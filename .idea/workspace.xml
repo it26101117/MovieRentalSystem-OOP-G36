@@ -6,14 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="8fdedb63-1391-4309-8a94-780ccb92259f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/AdminDashboardServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/AdminDashboardServlet.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/CatalogServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/CatalogServlet.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/MovieServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/MovieServlet.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/admin-dashboard.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/admin-dashboard.jsp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/catalog.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/catalog.jsp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/movie-form.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/movie-form.jsp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/my-rentals.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/my-rentals.jsp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/reviews.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/WEB-INF/views/reviews.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform.war" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform.war" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform.war.original" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform.war.original" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminDashboardServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminDashboardServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/CatalogServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/CatalogServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/MovieServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/MovieServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/catalog.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/catalog.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/movie-form.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/movie-form.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/reviews.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/reviews.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminDashboardServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminDashboardServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/CatalogServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/CatalogServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/MovieServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/MovieServlet.class" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
