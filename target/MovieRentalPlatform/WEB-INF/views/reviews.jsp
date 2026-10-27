@@ -6,34 +6,83 @@
 <%@ page import="com.movierental.util.HtmlUtil" %>
 
 <%
-    String ctx = request.getContextPath();
-    Movie movie =(Movie)request.getAttribute(  "movie"  );
-
-    List<Review> reviews = (List<Review>)  request.getAttribute(  "reviews" );
+    String ctx =
+            request.getContextPath();
 
 
-     Review userReview =(Review) request.getAttribute(  "userReview"  );
-
-    Boolean canReviewObject =  (Boolean) request.getAttribute( "canReview"  );
-
-    boolean canReview =Boolean.TRUE.equals( canReviewObject  );
-
-      String userName = (String) session.getAttribute( "userName"    );
+    Movie movie =
+            (Movie)
+                    request.getAttribute(
+                            "movie"
+                    );
 
 
-    String role =  (String) session.getAttribute("role"  );
-
-    String success = request.getParameter( "success" );
-
-    String error =request.getParameter( "error" );
-
-
-
-    if ( userName == null  || role == null ) {
-
-        response.sendRedirect( ctx + "/login");
+    List<Review> reviews =
+            (List<Review>)
+                    request.getAttribute(
+                            "reviews"
+                    );
 
 
+    Review userReview =
+            (Review)
+                    request.getAttribute(
+                            "userReview"
+                    );
+
+
+    Boolean canReviewObject =
+            (Boolean)
+                    request.getAttribute(
+                            "canReview"
+                    );
+
+
+    boolean canReview =
+            Boolean.TRUE.equals(
+                    canReviewObject
+            );
+
+
+    String userName =
+            (String)
+                    session.getAttribute(
+                            "userName"
+                    );
+
+
+    String role =
+            (String)
+                    session.getAttribute(
+                            "role"
+                    );
+
+
+    String success =
+            request.getParameter(
+                    "success"
+            );
+
+
+    String error =
+            request.getParameter(
+                    "error"
+            );
+
+
+    // =========================================================
+    // SECURITY
+    // =========================================================
+
+    if (
+            userName == null
+                    ||
+                    role == null
+    ) {
+
+        response.sendRedirect(
+                ctx + "/login"
+        );
 
         return;
     }
@@ -53,7 +102,9 @@
     }
 
 
-
+    // =========================================================
+    // SAFETY CHECK
+    // =========================================================
 
     if (movie == null) {
 
@@ -65,6 +116,9 @@
     }
 
 
+    // =========================================================
+    // USER INITIAL
+    // =========================================================
 
     String userInitial =
             "U";
@@ -87,7 +141,9 @@
     }
 
 
-
+    // =========================================================
+    // REVIEW COUNT
+    // =========================================================
 
     int reviewCount =
             reviews == null
@@ -123,7 +179,9 @@
 
     <style>
 
-
+        /* =====================================================
+           PAGE
+        ====================================================== */
 
         body {
             margin: 0;
@@ -183,6 +241,9 @@
         }
 
 
+        /* =====================================================
+           NAVBAR
+        ====================================================== */
 
         .customer-navbar {
             position:
@@ -465,7 +526,9 @@
         }
 
 
-
+        /* =====================================================
+           PAGE HEADER
+        ====================================================== */
 
         .reviews-header {
             display:
@@ -711,7 +774,9 @@
         }
 
 
-
+        /* =====================================================
+           HERO GRID
+        ====================================================== */
 
         .review-hero {
             display:
@@ -735,6 +800,9 @@
         }
 
 
+        /* =====================================================
+           MOVIE CARD
+        ====================================================== */
 
         .review-movie-card {
             overflow:
@@ -994,7 +1062,9 @@
         }
 
 
-
+        /* =====================================================
+           REVIEW FORM
+        ====================================================== */
 
         .review-form-card {
             padding:
@@ -1218,6 +1288,9 @@
         }
 
 
+        /* =====================================================
+           REVIEWS SECTION
+        ====================================================== */
 
         .reviews-section-header {
             display:
@@ -1487,7 +1560,9 @@
         }
 
 
-
+        /* =====================================================
+           FOOTER
+        ====================================================== */
 
         .reviews-footer {
             border-top:
@@ -1534,6 +1609,9 @@
         }
 
 
+        /* =====================================================
+           RESPONSIVE
+        ====================================================== */
 
         @media (
         max-width: 1050px

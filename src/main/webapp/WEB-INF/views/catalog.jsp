@@ -1224,67 +1224,6 @@
 
 
         /*
-           PAYMENT CHECKOUT
-         */
-
-        .catalog-checkout-tip {
-            display: flex;
-            align-items: flex-start;
-            gap: 13px;
-            margin-bottom: 23px;
-            padding: 17px 20px;
-            border: 1px solid rgba(139, 92, 246, 0.20);
-            border-radius: 14px;
-            background: rgba(124, 58, 237, 0.08);
-        }
-
-        .catalog-checkout-tip-icon {
-            flex-shrink: 0;
-            font-size: 22px;
-        }
-
-        .catalog-checkout-tip strong {
-            color: #ddd6fe;
-            font-size: 12px;
-        }
-
-        .catalog-checkout-tip p {
-            margin: 6px 0 0;
-            color: #94a3b8;
-            font-size: 11px;
-            line-height: 1.7;
-        }
-
-        .catalog-shortcuts {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            flex-wrap: wrap;
-        }
-
-        .my-payments-button {
-            min-height: 43px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            padding: 0 15px;
-            border: 1px solid rgba(139, 92, 246, 0.30);
-            border-radius: 10px;
-            color: #ddd6fe;
-            background: rgba(124, 58, 237, 0.10);
-            text-decoration: none;
-            font-size: 10px;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-
-        .my-payments-button:hover {
-            border-color: #a78bfa;
-            background: rgba(124, 58, 237, 0.18);
-        }
-
-        /*
            RESULTS HEADER
          */
 
@@ -2186,17 +2125,9 @@
         max-width: 600px
         ) {
 
-            .catalog-user-name {
+            .catalog-profile-name {
                 display:
                         none;
-            }
-
-            .catalog-shortcuts {
-                width: 100%;
-            }
-
-            .catalog-shortcuts > a {
-                flex: 1;
             }
 
 
@@ -2333,16 +2264,6 @@
 
 
             <a
-                    href="<%= ctx %>/payments"
-                    class="catalog-nav-link"
-            >
-
-                My Payments
-
-            </a>
-
-
-            <a
                     href="<%= ctx %>/recently-watched"
                     class="catalog-nav-link"
             >
@@ -2439,8 +2360,7 @@
 
                     Explore CineRent's movie collection,
                     compare ratings, discover new titles
-                    and choose a payment method at checkout
-                    before activating your rental.
+                    and rent your next movie in seconds.
 
                 </p>
 
@@ -2496,22 +2416,6 @@
 
         </section>
 
-
-        <!--
-             PAYMENT FLOW NOTICE
-        -->
-
-        <div class="catalog-checkout-tip">
-            <span class="catalog-checkout-tip-icon" aria-hidden="true">💳</span>
-            <div>
-                <strong>Rentals now go through checkout</strong>
-                <p>
-                    Select Rent &amp; Pay to review the movie and rental price.
-                    Demo Card payments are simulated; bank transfers require
-                    administrator approval before rental activation.
-                </p>
-            </div>
-        </div>
 
         <!--
              ERRORS
@@ -2574,19 +2478,6 @@
 
         </div>
 
-
-        <% } else if ("paymentrequired".equalsIgnoreCase(error)) { %>
-
-        <div class="catalog-alert" data-auto-hide>
-            Complete checkout and payment before renting this movie.
-        </div>
-
-        <% } else if ("paymentpending".equalsIgnoreCase(error)) { %>
-
-        <div class="catalog-alert info" data-auto-hide>
-            Your bank transfer is awaiting administrator approval.
-            Check My Payments for its current status.
-        </div>
 
         <%
             }
@@ -2682,25 +2573,16 @@
             </div>
 
 
-            <!-- CUSTOMER SHORTCUTS -->
+            <!-- RENTALS -->
 
-            <div class="catalog-shortcuts">
+            <a
+                    href="<%= ctx %>/rentals"
+                    class="my-rentals-button"
+            >
 
-                <a
-                        href="<%= ctx %>/rentals"
-                        class="my-rentals-button"
-                >
-                    🎬 My Rentals
-                </a>
+                 My Rentals
 
-                <a
-                        href="<%= ctx %>/payments"
-                        class="my-payments-button"
-                >
-                    💳 My Payments
-                </a>
-
-            </div>
+            </a>
 
 
         </section>
@@ -3039,34 +2921,47 @@
                         </a>
 
 
-                        <!-- CHECKOUT: payment is required before rental -->
+                        <!-- RENT -->
 
-                        <% if (available) { %>
-
-                        <a
-                                href="<%= ctx %>/checkout?movieId=<%=
-                                        java.net.URLEncoder.encode(
-                                                movie.getMovieId(),
-                                                java.nio.charset.StandardCharsets.UTF_8
-                                        )
-                                %>"
-                                class="catalog-action-button rent-button"
-                                aria-label="Rent and pay for <%= HtmlUtil.escape(movie.getTitle()) %>"
+                        <form
+                                method="post"
+                                action="<%= ctx %>/rentals"
                         >
-                            💳 Rent &amp; Pay
-                        </a>
 
-                        <% } else { %>
 
-                        <button
-                                type="button"
-                                class="catalog-action-button rent-button"
-                                disabled
-                        >
-                            Unavailable
-                        </button>
+                            <input
+                                    type="hidden"
+                                    name="action"
+                                    value="rent"
+                            >
 
-                        <% } %>
+
+                            <input
+                                    type="hidden"
+                                    name="movieId"
+                                    value="<%= HtmlUtil.escape(
+                                            movie.getMovieId()
+                                    ) %>"
+                            >
+
+
+                            <button
+                                    type="submit"
+                                    class="catalog-action-button rent-button"
+
+                                    <%= available
+                                            ? ""
+                                            : "disabled" %>
+                            >
+
+                                <%= available
+                                        ? "▶ Rent Movie"
+                                        : "Unavailable" %>
+
+                            </button>
+
+
+                        </form>
 
 
                     </div>
@@ -3124,7 +3019,7 @@
 
         <div>
 
-            Browse • Checkout • Rent • Watch • Review
+            Browse • Rent • Watch • Review
 
         </div>
 
