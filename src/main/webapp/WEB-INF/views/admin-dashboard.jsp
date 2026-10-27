@@ -1,6 +1,11 @@
 
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="com.movierental.util.HtmlUtil" %>
+<%@ page import="com.movierental.model.Payment" %>
+<%@ page import="java.util.ArrayList" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Locale" %>
+<%@ page import="java.math.BigDecimal" %>
 
 <%!
     private int dashboardNumber(Object value) {
@@ -22,6 +27,13 @@
 
 <%
     String ctx = request.getContextPath();
+
+    // The controller must also enforce ADMIN authorization.
+    Object currentRole = session.getAttribute("role");
+    if (!"ADMIN".equalsIgnoreCase(String.valueOf(currentRole))) {
+        response.sendRedirect(ctx + "/login");
+        return;
+    }
 
     String adminName = (String) session.getAttribute("userName");
 
@@ -63,6 +75,58 @@
             ? Math.min(100,
             (int) Math.round(returnedRentalCount * 100.0 / totalRentalCount))
             : 0;
+
+    // ----------------------------------------------------------
+    // Payment dashboard data, supplied by AdminServlet.
+    // Do not query the file store directly from the JSP.
+    // ----------------------------------------------------------
+    Object paymentAttribute = request.getAttribute("payments");
+    boolean paymentDataLoaded = paymentAttribute instanceof List<?>;
+
+    List<Payment> allPayments = new ArrayList<>();
+    if (paymentDataLoaded) {
+        for (Object item : (List<?>) paymentAttribute) {
+            if (item instanceof Payment) {
+                allPayments.add((Payment) item);
+            }
+        }
+    }
+
+    int totalPayments = allPayments.size();
+    int pendingPayments = 0;
+    int paidPayments = 0;
+    int rejectedPayments = 0;
+    BigDecimal recordedPaidAmount = BigDecimal.ZERO;
+    List<Payment> pendingTransfers = new ArrayList<>();
+
+    for (Payment payment : allPayments) {
+        if (payment.isPending()) {
+            pendingPayments++;
+            if (payment.isBankTransfer()) {
+                pendingTransfers.add(payment);
+            }
+        } else if (payment.isPaid()) {
+            paidPayments++;
+            if (payment.getAmount() != null) {
+                recordedPaidAmount = recordedPaidAmount.add(payment.getAmount());
+            }
+        } else if (payment.isRejected()) {
+            rejectedPayments++;
+        }
+    }
+
+    // Display the newest payment records first.
+    List<Payment> recentPayments = new ArrayList<>(allPayments);
+    recentPayments.sort((a, b) -> {
+        if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+        if (a.getCreatedAt() == null) return 1;
+        if (b.getCreatedAt() == null) return -1;
+        return b.getCreatedAt().compareTo(a.getCreatedAt());
+    });
+
+    String formattedPaidAmount = String.format(
+            Locale.US, "LKR %,.2f", recordedPaidAmount
+    );
 %>
 
 <!DOCTYPE html>
@@ -430,7 +494,7 @@
 
         .modules-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 17px;
         }
 
@@ -711,6 +775,234 @@
             font-weight: 850;
         }
 
+
+        /* Payment overview */
+
+        .payment-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 15px;
+        }
+
+        .payment-stat-card {
+            min-width: 0;
+            padding: 21px;
+            border: 1px solid var(--dash-border);
+            border-radius: 18px;
+            background: linear-gradient(145deg, #1a2436, #111827);
+        }
+
+        .payment-stat-card .payment-stat-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 17px;
+        }
+
+        .payment-stat-icon {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            font-size: 19px;
+        }
+
+        .payment-stat-value {
+            display: block;
+            color: #f6f8ff;
+            font-size: clamp(23px, 2.2vw, 31px);
+            font-weight: 850;
+            letter-spacing: -0.7px;
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+        }
+
+        .payment-stat-value.amount {
+            font-size: clamp(18px, 1.7vw, 25px);
+        }
+
+        .payment-stat-label {
+            margin-top: 8px;
+            color: #a1aec4;
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+        .payment-stat-note {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            color: #8290a8;
+            font-size: 10px;
+            line-height: 1.6;
+        }
+
+        .payment-action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1px solid rgba(135, 85, 255, 0.36);
+            border-radius: 10px;
+            background: rgba(135, 85, 255, 0.13);
+            color: #d8ceff;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .payment-action-link:hover {
+            background: rgba(135, 85, 255, 0.25);
+        }
+
+        .payment-ops-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+            gap: 18px;
+        }
+
+        .payment-panel {
+            min-width: 0;
+            padding: 24px;
+            border: 1px solid var(--dash-border);
+            border-radius: 20px;
+            background: rgba(20, 29, 44, 0.92);
+        }
+
+        .payment-panel-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 17px;
+        }
+
+        .payment-panel-heading h3 {
+            margin: 0;
+            color: #f0f3ff;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .payment-panel-heading a {
+            color: #bca7ff;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .payment-queue-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+        }
+
+        .payment-queue-item:last-child {
+            border-bottom: 0;
+        }
+
+        .payment-queue-item strong {
+            display: block;
+            color: #e9edff;
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .payment-queue-item small {
+            display: block;
+            margin-top: 5px;
+            color: #91a0b9;
+            font-size: 10px;
+            line-height: 1.6;
+        }
+
+        .payment-queue-amount {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .payment-queue-amount b {
+            display: block;
+            color: #e5e7eb;
+            font-size: 12px;
+        }
+
+        .payment-status {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 7px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+        }
+
+        .payment-status.pending {
+            color: #ffd16e;
+            background: rgba(255, 190, 60, 0.13);
+        }
+
+        .payment-status.paid {
+            color: #63e9b0;
+            background: rgba(66, 223, 160, 0.13);
+        }
+
+        .payment-status.failed {
+            color: #ff9fa7;
+            background: rgba(255, 95, 112, 0.13);
+        }
+
+        .payment-empty {
+            padding: 24px 14px;
+            border: 1px dashed rgba(148, 163, 184, 0.19);
+            border-radius: 12px;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.8;
+            text-align: center;
+        }
+
+        .payment-note {
+            margin-top: 17px;
+            color: #8290a8;
+            font-size: 11px;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 1100px) {
+            .payment-stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .payment-ops-grid {
+                grid-template-columns: 1fr;
+            }
+            .payment-panel {
+                padding: 18px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .payment-stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .payment-stat-card {
+                padding: 15px;
+            }
+            .payment-queue-item {
+                align-items: flex-start;
+            }
+            .payment-queue-amount b {
+                font-size: 11px;
+            }
+        }
+
         /* Responsive layout */
 
         @media (max-width: 1200px) {
@@ -847,7 +1139,7 @@
 
             <p class="hero-description">
                 Manage your movie catalogue, customer accounts,
-                rentals and reviews from one central workspace.
+                rentals, reviews and payment approvals from one central workspace.
                 Everything you need to operate CineRent is right here.
             </p>
 
@@ -1042,6 +1334,76 @@
     </section>
 
 
+    <!-- Payment statistics: loaded by AdminServlet -->
+
+    <section class="dashboard-section" aria-labelledby="payment-overview-title">
+
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title" id="payment-overview-title">Payment overview</h2>
+                <p class="section-description">
+                    Monitor checkout transactions, approvals and recorded payments.
+                </p>
+            </div>
+            <a class="payment-action-link" href="<%= ctx %>/admin/payments">
+                Manage payments &rarr;
+            </a>
+        </div>
+
+        <div class="payment-stats-grid">
+
+            <article class="payment-stat-card">
+                <div class="payment-stat-top">
+                    <span class="payment-stat-icon purple">&#128179;</span>
+                    <span class="stat-tag">Transactions</span>
+                </div>
+                <strong class="payment-stat-value">
+                    <%= paymentDataLoaded ? String.format(Locale.US, "%,d", totalPayments) : "—" %>
+                </strong>
+                <div class="payment-stat-label">Total payments</div>
+                <div class="payment-stat-note">All recorded payment attempts</div>
+            </article>
+
+            <article class="payment-stat-card">
+                <div class="payment-stat-top">
+                    <span class="payment-stat-icon yellow">&#9203;</span>
+                    <span class="stat-tag">Action needed</span>
+                </div>
+                <strong class="payment-stat-value">
+                    <%= paymentDataLoaded ? String.format(Locale.US, "%,d", pendingPayments) : "—" %>
+                </strong>
+                <div class="payment-stat-label">Pending payments</div>
+                <div class="payment-stat-note">Bank transfers may require verification</div>
+            </article>
+
+            <article class="payment-stat-card">
+                <div class="payment-stat-top">
+                    <span class="payment-stat-icon green">&#10003;</span>
+                    <span class="stat-tag">Approved</span>
+                </div>
+                <strong class="payment-stat-value">
+                    <%= paymentDataLoaded ? String.format(Locale.US, "%,d", paidPayments) : "—" %>
+                </strong>
+                <div class="payment-stat-label">Paid transactions</div>
+                <div class="payment-stat-note">Includes simulated demo card payments</div>
+            </article>
+
+            <article class="payment-stat-card">
+                <div class="payment-stat-top">
+                    <span class="payment-stat-icon blue">&#128200;</span>
+                    <span class="stat-tag">Recorded value</span>
+                </div>
+                <strong class="payment-stat-value amount">
+                    <%= paymentDataLoaded ? HtmlUtil.escape(formattedPaidAmount) : "—" %>
+                </strong>
+                <div class="payment-stat-label">Total marked paid</div>
+                <div class="payment-stat-note">Not verified cash revenue; demo payments included</div>
+            </article>
+
+        </div>
+    </section>
+
+
     <!-- Management modules -->
 
     <section class="dashboard-section">
@@ -1055,7 +1417,7 @@
                 </p>
             </div>
 
-            <span class="section-kicker">4 modules</span>
+            <span class="section-kicker">5 modules</span>
 
         </div>
 
@@ -1189,8 +1551,143 @@
 
             </a>
 
+
+            <!-- Payment management -->
+
+            <a class="module-card" href="<%= ctx %>/admin/payments">
+
+                <div class="module-top">
+                    <div class="module-icon green">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="2" y="5" width="20" height="14" rx="3"/>
+                            <path d="M2 10h20M6 15h4"/>
+                        </svg>
+                    </div>
+                    <span class="module-badge">PAYMENTS</span>
+                </div>
+
+                <h3 class="module-title">Payment management</h3>
+
+                <p class="module-description">
+                    Review checkout records, verify bank transfers, approve or
+                    reject pending payments and track linked rental references.
+                </p>
+
+                <div class="module-action">
+                    <span>Manage payments</span>
+                    <span>→</span>
+                </div>
+
+            </a>
+
         </div>
 
+    </section>
+
+
+    <!-- Payment operations -->
+
+    <section class="dashboard-section" aria-labelledby="payment-operations-title">
+
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title" id="payment-operations-title">Payment operations</h2>
+                <p class="section-description">
+                    Bank transfer verification queue and latest transaction activity.
+                </p>
+            </div>
+            <span class="section-kicker">Admin verification</span>
+        </div>
+
+        <div class="payment-ops-grid">
+
+            <section class="payment-panel">
+                <div class="payment-panel-heading">
+                    <h3>Bank transfers awaiting approval</h3>
+                    <a href="<%= ctx %>/admin/payments">View all &rarr;</a>
+                </div>
+
+                <% if (!paymentDataLoaded) { %>
+                <div class="payment-empty">
+                    Payment data has not been loaded by the dashboard servlet.
+                    See the integration instructions below this file.
+                </div>
+                <% } else if (pendingTransfers.isEmpty()) { %>
+                <div class="payment-empty">
+                    No bank transfers are currently awaiting verification.
+                </div>
+                <% } else { %>
+                <%
+                    int queueLimit = Math.min(5, pendingTransfers.size());
+                    for (int i = 0; i < queueLimit; i++) {
+                        Payment payment = pendingTransfers.get(i);
+                %>
+                <div class="payment-queue-item">
+                    <div>
+                        <strong>Payment #<%= HtmlUtil.escape(payment.getPaymentId()) %></strong>
+                        <small>
+                            Customer <%= HtmlUtil.escape(payment.getUserId()) %>
+                            &middot; Movie <%= HtmlUtil.escape(payment.getMovieId()) %>
+                        </small>
+                    </div>
+                    <div class="payment-queue-amount">
+                        <b><%= HtmlUtil.escape(payment.getFormattedAmount()) %></b>
+                        <span class="payment-status pending">PENDING</span>
+                    </div>
+                </div>
+                <% } %>
+                <% } %>
+
+                <p class="payment-note">
+                    Approve transfers only after independently verifying the receipt
+                    and bank transaction. Approval alone does not activate a rental
+                    until rental creation is integrated into the backend.
+                </p>
+            </section>
+
+            <section class="payment-panel">
+                <div class="payment-panel-heading">
+                    <h3>Recent payments</h3>
+                    <a href="<%= ctx %>/admin/payments">View all &rarr;</a>
+                </div>
+
+                <% if (!paymentDataLoaded) { %>
+                <div class="payment-empty">
+                    Recent payment activity will appear when the servlet supplies
+                    the <code>payments</code> request attribute.
+                </div>
+                <% } else if (recentPayments.isEmpty()) { %>
+                <div class="payment-empty">
+                    No payment records have been created yet.
+                </div>
+                <% } else { %>
+                <%
+                    int recentLimit = Math.min(6, recentPayments.size());
+                    for (int i = 0; i < recentLimit; i++) {
+                        Payment payment = recentPayments.get(i);
+                        String paymentCss = payment.isPaid() ? "paid" :
+                                payment.isPending() ? "pending" : "failed";
+                %>
+                <div class="payment-queue-item">
+                    <div>
+                        <strong>#<%= HtmlUtil.escape(payment.getPaymentId()) %></strong>
+                        <small>
+                            <%= HtmlUtil.escape(payment.getPaymentMethodDisplay()) %>
+                            &middot; <%= HtmlUtil.escape(payment.getFormattedCreatedAt()) %>
+                        </small>
+                    </div>
+                    <div class="payment-queue-amount">
+                        <b><%= HtmlUtil.escape(payment.getFormattedAmount()) %></b>
+                        <span class="payment-status <%= paymentCss %>">
+                                    <%= HtmlUtil.escape(payment.getPaymentStatus()) %>
+                                </span>
+                    </div>
+                </div>
+                <% } %>
+                <% } %>
+            </section>
+
+        </div>
     </section>
 
 
@@ -1326,6 +1823,12 @@
                     <a class="quick-link"
                        href="<%= ctx %>/admin/reviews">
                         <span>Customer feedback</span>
+                        <span>↗</span>
+                    </a>
+
+                    <a class="quick-link"
+                       href="<%= ctx %>/admin/payments">
+                        <span>Verify bank transfers</span>
                         <span>↗</span>
                     </a>
 
