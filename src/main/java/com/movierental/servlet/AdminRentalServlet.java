@@ -209,7 +209,7 @@ public class AdminRentalServlet extends HttpServlet {
             }
 
             // ADD MATCHING RENTAL
-            if (searchMatches) {
+            if (searchMatches) {git
                 filteredRentals.add(rental);
             }
         }
