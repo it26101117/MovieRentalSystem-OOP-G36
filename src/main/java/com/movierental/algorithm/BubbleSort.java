@@ -3,6 +3,7 @@ import com.movierental.model.Movie;
 import java.util.ArrayList;
 import java.util.List;
 public class BubbleSort {
+
     private BubbleSort() {
         // Prevent creating BubbleSort objects
     }
@@ -38,6 +39,7 @@ public class BubbleSort {
 
     // SORT RATING - LOWEST TO HIGHEST
     public static List<Movie> sortByRatingAscending(List<Movie> movies){
+
         List<Movie> sortedMovies = new ArrayList<>(movies);
 
         int n =sortedMovies.size();
