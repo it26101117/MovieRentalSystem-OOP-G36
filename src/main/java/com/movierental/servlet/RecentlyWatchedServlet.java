@@ -118,11 +118,7 @@ public class RecentlyWatchedServlet extends HttpServlet {
         // CUSTOMER ACCESS ONLY
 
 
-        String role =
-                (String)
-                        session.getAttribute(
-                                "role"
-                        );
+        String role = (String) session.getAttribute("role");
 
 
         if (

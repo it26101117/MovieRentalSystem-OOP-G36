@@ -3,7 +3,6 @@ import com.movierental.model.Movie;
 import java.util.ArrayList;
 import java.util.List;
 public class BubbleSort {
-
     private BubbleSort() {
         // Prevent creating BubbleSort objects
     }
