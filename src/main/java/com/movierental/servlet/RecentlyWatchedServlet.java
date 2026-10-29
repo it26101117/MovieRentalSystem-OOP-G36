@@ -23,9 +23,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
     private WatchHistoryService watchHistoryService;
 
 
-    // =========================================================
+
     // INITIALIZATION
-    // =========================================================
+
 
     @Override
     public void init() throws ServletException {
@@ -79,9 +79,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
     }
 
 
-    // =========================================================
+
     // GET
-    // =========================================================
+
 
     @Override
     protected void doGet(
@@ -93,9 +93,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
                 request.getSession(false);
 
 
-        // =====================================================
+
         // LOGIN CHECK
-        // =====================================================
+
 
         if (
                 session == null
@@ -114,9 +114,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
         }
 
 
-        // =====================================================
+
         // CUSTOMER ACCESS ONLY
-        // =====================================================
+
 
         String role =
                 (String)
@@ -141,9 +141,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
         }
 
 
-        // =====================================================
+
         // GET LOGGED-IN USER ID
-        // =====================================================
+
 
         String userId =
                 (String)
@@ -152,9 +152,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
                         );
 
 
-        // =====================================================
+
         // BUILD CUSTOM MOVIE STACK
-        // =====================================================
+
 
         MovieStack stack =
                 watchHistoryService
@@ -163,20 +163,20 @@ public class RecentlyWatchedServlet extends HttpServlet {
                         );
 
 
-        // =====================================================
+
         // PEEK()
         //
         // Shows the latest movie without removing
         // it from the stack.
-        // =====================================================
+
 
         Movie latestMovie =
                 stack.peek();
 
 
-        // =====================================================
+
         // RECENTLY WATCHED LIST
-        // =====================================================
+
 
         List<Movie> recentlyWatched =
                 new ArrayList<>();
@@ -202,9 +202,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
         }
 
 
-        // =====================================================
+
         // SEND DATA TO JSP
-        // =====================================================
+
 
         request.setAttribute(
                 "latestMovie",
@@ -218,9 +218,9 @@ public class RecentlyWatchedServlet extends HttpServlet {
         );
 
 
-        // =====================================================
+
         // FORWARD TO JSP
-        // =====================================================
+
 
         request.getRequestDispatcher(
                 "/WEB-INF/views/recently-watched.jsp"
