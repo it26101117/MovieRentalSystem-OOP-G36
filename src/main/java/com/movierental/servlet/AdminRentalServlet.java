@@ -62,10 +62,8 @@ public class AdminRentalServlet extends HttpServlet {
     // GET
 
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
         HttpSession session =request.getSession(false);
 
 
@@ -104,10 +102,7 @@ public class AdminRentalServlet extends HttpServlet {
         Map<String, Movie> movieMap =new HashMap<>();
 
         for (Movie movie : allMovies) {
-            movieMap.put(
-                    movie.getMovieId(),
-                    movie
-            );
+            movieMap.put(movie.getMovieId(), movie);
         }
 
 
@@ -150,8 +145,7 @@ public class AdminRentalServlet extends HttpServlet {
 
             boolean statusMatches;
             if ("all".equalsIgnoreCase( selectedStatus)) {
-                statusMatches =
-                        true;
+                statusMatches = true;
 
             } else {
                 statusMatches =rental.getStatus() != null &&rental.getStatus().equalsIgnoreCase( selectedStatus);
@@ -172,43 +166,18 @@ public class AdminRentalServlet extends HttpServlet {
 
             if (!searchText.isEmpty()) {
 
-                if (
-                        rental.getRentalId() != null
-                                &&
-                                rental.getRentalId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
+                if (rental.getRentalId() != null && rental.getRentalId().toLowerCase().contains(searchText)) {
 
                     searchMatches =true;
 
                 }
 
-                if (
-                        rental.getUserId() != null
-                                &&
-                                rental.getUserId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
+                if (rental.getUserId() != null && rental.getUserId().toLowerCase().contains(searchText)) {
 
-                    searchMatches =
-                            true;
+                    searchMatches = true;
                 }
                 //get movie ID
-                if (
-                        rental.getMovieId() != null
-                                &&
-                                rental.getMovieId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
+                if (rental.getMovieId() != null && rental.getMovieId().toLowerCase().contains(searchText)) {
 
                     searchMatches =true;
 
@@ -217,27 +186,12 @@ public class AdminRentalServlet extends HttpServlet {
 
                 // CUSTOMER NAME / EMAIL
                 if (user != null) {
-                    if (
-                            user.getName() != null
-                                    &&
-                                    user.getName()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
+                    if (user.getName() != null && user.getName().toLowerCase().contains(searchText)) {
                         searchMatches =true;
 
                     }
 
-                    if (user.getEmail() != null
-                                    &&
-                                    user.getEmail()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
+                    if (user.getEmail() != null && user.getEmail().toLowerCase().contains(searchText)) {
 
                         searchMatches =true;
 
@@ -246,15 +200,7 @@ public class AdminRentalServlet extends HttpServlet {
 
                 // MOVIE TITLE
                 if (movie != null) {
-                    if (
-                            movie.getTitle() != null
-                                    &&
-                                    movie.getTitle()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
+                    if (movie.getTitle() != null && movie.getTitle().toLowerCase().contains(searchText)) {
 
                         searchMatches =true;
 
@@ -263,7 +209,7 @@ public class AdminRentalServlet extends HttpServlet {
             }
 
             // ADD MATCHING RENTAL
-            if (searchMatches) {
+            if (searchMatches) {git
                 filteredRentals.add(rental);
             }
         }

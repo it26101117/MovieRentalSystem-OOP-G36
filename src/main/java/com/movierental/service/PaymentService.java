@@ -336,8 +336,7 @@ public class PaymentService {
 
             String existingRentalId = selectedPayment.getRentalId();
 
-            if (existingRentalId != null
-                    && !existingRentalId.isEmpty()) {
+            if (existingRentalId != null && !existingRentalId.isEmpty()) {
 
                 if (existingRentalId.equals(validRentalId)) {
                     return selectedPayment;
@@ -582,10 +581,7 @@ public class PaymentService {
 
         } catch (IOException e) {
 
-            throw new IllegalStateException(
-                    "Unable to save payment records.",
-                    e
-            );
+            throw new IllegalStateException("Unable to save payment records.", e);
 
         } finally {
 
@@ -612,9 +608,7 @@ public class PaymentService {
 
         if (!DEMO_CARD.equals(method) && !BANK_TRANSFER.equals(method)) {
 
-            throw new IllegalArgumentException(
-                    "Unsupported payment method."
-            );
+            throw new IllegalArgumentException("Unsupported payment method.");
         }
 
         return method;
