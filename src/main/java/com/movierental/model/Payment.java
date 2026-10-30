@@ -30,9 +30,7 @@ public class Payment {
     private String paymentId;
     private String userId;
     private String movieId;
-
     private BigDecimal amount;
-
     private String paymentMethod;
     private String paymentStatus;
 
@@ -54,7 +52,6 @@ public class Payment {
 
 
     // PARAMETERIZED CONSTRUCTOR
-
 
     public Payment(
             String paymentId,

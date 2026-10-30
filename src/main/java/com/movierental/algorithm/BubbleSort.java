@@ -38,6 +38,7 @@ public class BubbleSort {
 
     // SORT RATING - LOWEST TO HIGHEST
     public static List<Movie> sortByRatingAscending(List<Movie> movies){
+
         List<Movie> sortedMovies = new ArrayList<>(movies);
 
         int n =sortedMovies.size();
