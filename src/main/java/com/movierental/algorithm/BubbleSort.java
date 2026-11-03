@@ -1,7 +1,9 @@
 package com.movierental.algorithm;
+
 import com.movierental.model.Movie;
 import java.util.ArrayList;
 import java.util.List;
+
 public class BubbleSort {
     private BubbleSort() {
         // Prevent creating BubbleSort objects
@@ -32,8 +34,10 @@ public class BubbleSort {
             if (!swapped) {
                 break;
             }
+
         }
         return sortedMovies;
+
     }
 
     // SORT RATING - LOWEST TO HIGHEST
@@ -57,7 +61,9 @@ public class BubbleSort {
             if (!swapped){
                 break;
             }
+
         }
         return sortedMovies;
+        
     }
 }
