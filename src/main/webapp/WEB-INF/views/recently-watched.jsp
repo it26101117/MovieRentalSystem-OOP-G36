@@ -43,6 +43,8 @@
             color: white;
         }
 
+
+
         .container {
             width: 92%;
             max-width: 1100px;
@@ -56,15 +58,19 @@
             margin-bottom: 30px;
         }
 
+
+
         .subtitle {
             color: #94a3b8;
         }
+
 
         .nav a {
             color: #60a5fa;
             text-decoration: none;
             margin-left: 15px;
         }
+
 
         .latest {
             background: #1e293b;
@@ -74,6 +80,7 @@
             border-left: 5px solid #2563eb;
         }
 
+
         .latest-label {
             color: #60a5fa;
             font-size: 13px;
@@ -81,17 +88,20 @@
             text-transform: uppercase;
         }
 
+
         .movies {
             display: grid;
             grid-template-columns:repeat(auto-fit,minmax(230px, 1fr));
             gap: 20px;
         }
 
+
         .movie-card {
             background: #1e293b;
             padding: 25px;
             border-radius: 12px;
         }
+
 
         .genre {
             color: #94a3b8;
@@ -101,11 +111,13 @@
             color: #facc15;
         }
 
+
         .position {
             color: #60a5fa;
             font-size: 13px;
             font-weight: bold;
         }
+
 
         .empty {
             background: #1e293b;
@@ -264,6 +276,7 @@
     <%
         }
     %>
+
 
 
 </div>
