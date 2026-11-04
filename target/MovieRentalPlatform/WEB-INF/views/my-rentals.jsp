@@ -1,2510 +1,1030 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-
-<%@ page import="java.util.List" %>
-<%@ page import="com.movierental.model.Rental" %>
-<%@ page import="com.movierental.model.Movie" %>
-<%@ page import="com.movierental.service.MovieService" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.lang.reflect.Method" %>
+<%@ page import="java.time.LocalDate,java.time.LocalDateTime,java.time.format.DateTimeFormatter" %>
+<%@ page import="com.movierental.model.Movie,com.movierental.model.Payment" %>
 <%@ page import="com.movierental.util.HtmlUtil" %>
-
+<%!
+    // Supports common Rental getter names until Rental.java is available.
+    private static Object read(Object obj, String... names) {
+        if (obj == null) return null;
+        for (String name : names) {
+            try {
+                Method m = obj.getClass().getMethod(name);
+                if (m.getParameterCount() == 0) {
+                    Object value = m.invoke(obj);
+                    if (value != null) return value;
+                }
+            } catch (ReflectiveOperationException | SecurityException ignored) { }
+        }
+        return null;
+    }
+    private static String value(Object obj, String... names) {
+        Object result = read(obj, names);
+        return result == null ? "" : String.valueOf(result).trim();
+    }
+    private static String esc(String text) {
+        return HtmlUtil.escape(text == null ? "" : text);
+    }
+    private static String date(Object obj) {
+        if (obj == null) return "Not available";
+        if (obj instanceof LocalDateTime)
+            return ((LocalDateTime) obj).format(
+                    DateTimeFormatter.ofPattern(
+                            "dd MMM yyyy, hh:mm a", Locale.ENGLISH
+                    )
+            );
+        if (obj instanceof LocalDate)
+            return ((LocalDate) obj).format(
+                    DateTimeFormatter.ofPattern(
+                            "dd MMM yyyy", Locale.ENGLISH
+                    )
+            );
+        String text = String.valueOf(obj).trim();
+        return text.isEmpty() ? "Not available" : text.replace('T', ' ');
+    }
+    private static String status(Object rental) {
+        String result = value(
+                rental, "getStatus", "getRentalStatus"
+        );
+        if (!result.isEmpty())
+            return result.toUpperCase(Locale.ROOT);
+        Object returned = read(
+                rental, "isReturned", "getReturned"
+        );
+        if (returned instanceof Boolean)
+            return (Boolean) returned ? "RETURNED" : "ACTIVE";
+        return "UNKNOWN";
+    }
+    private static boolean active(String s) {
+        return "ACTIVE".equals(s)
+                || "RENTED".equals(s)
+                || "ONGOING".equals(s);
+    }
+    private static boolean returned(String s) {
+        return "RETURNED".equals(s)
+                || "COMPLETED".equals(s)
+                || "CLOSED".equals(s);
+    }
+%>
 <%
-    String ctx =
-            request.getContextPath();
-
-
-    List<Rental> rentals =
-            (List<Rental>)
-                    request.getAttribute(
-                            "rentals"
-                    );
-
-
-    MovieService movieService =
-            (MovieService)
-                    request.getAttribute(
-                            "movieService"
-                    );
-
-
+    String ctx = request.getContextPath();
+    String userId = (String) session.getAttribute("userId");
+    String role = (String) session.getAttribute("role");
+    if (userId == null || role == null) {
+        response.sendRedirect(ctx + "/login");
+        return;
+    }
+    if (!"CUSTOMER".equalsIgnoreCase(role)) {
+        response.sendRedirect(ctx + "/admin");
+        return;
+    }
     String userName =
-            (String)
-                    session.getAttribute(
-                            "userName"
-                    );
-
-
-    String role =
-            (String)
-                    session.getAttribute(
-                            "role"
-                    );
-
-
-    // =========================================================
-    // SECURITY
-    // =========================================================
-
-    if (
-            userName == null
-                    ||
-                    role == null
-    ) {
-
-        response.sendRedirect(
-                ctx + "/login"
-        );
-
-        return;
+            (String) session.getAttribute("userName");
+    if (userName == null || userName.isBlank())
+        userName = "Customer";
+    // ==================================================
+    // RENTAL RECORDS
+    // ==================================================
+    Object rawRentals = request.getAttribute("rentals");
+    if (!(rawRentals instanceof List<?>))
+        rawRentals = request.getAttribute("myRentals");
+    List<Object> rentals = new ArrayList<>();
+    if (rawRentals instanceof List<?>) {
+        for (Object rental : (List<?>) rawRentals) {
+            if (rental == null) continue;
+            String owner = value(
+                    rental, "getUserId", "getCustomerId"
+            );
+            if (owner.isEmpty() || owner.equals(userId))
+                rentals.add(rental);
+        }
     }
-
-
-    if (
-            !"CUSTOMER".equalsIgnoreCase(
-                    role
-            )
-    ) {
-
-        response.sendRedirect(
-                ctx + "/admin"
-        );
-
-        return;
-    }
-
-
-    // =========================================================
-    // COUNTS
-    // =========================================================
-
-    int totalRentalCount = 0;
-    int activeRentalCount = 0;
-    int returnedRentalCount = 0;
-
-
-    if (rentals != null) {
-
-        totalRentalCount =
-                rentals.size();
-
-
-        for (Rental rental : rentals) {
-
-            if (
-                    "RENTED".equalsIgnoreCase(
-                            rental.getStatus()
-                    )
-            ) {
-
-                activeRentalCount++;
-
-            } else if (
-                    "RETURNED".equalsIgnoreCase(
-                            rental.getStatus()
-                    )
-            ) {
-
-                returnedRentalCount++;
+    // ==================================================
+    // MOVIE RECORDS
+    // ==================================================
+    Map<String, Movie> moviesById = new HashMap<>();
+    Object movieData =
+            request.getAttribute("moviesById");
+    if (movieData instanceof Map<?, ?>) {
+        for (Object obj :
+                ((Map<?, ?>) movieData).values()) {
+            if (obj instanceof Movie) {
+                Movie m = (Movie) obj;
+                moviesById.put(m.getMovieId(), m);
             }
         }
     }
-
-
-    // =========================================================
-    // USER INITIAL
-    // =========================================================
-
-    String userInitial =
-            "U";
-
-
-    if (
-            userName != null
-                    &&
-                    !userName.trim().isEmpty()
-    ) {
-
-        userInitial =
-                userName
-                        .trim()
-                        .substring(
-                                0,
-                                1
-                        )
-                        .toUpperCase();
+    Object rawMovies = request.getAttribute("movies");
+    if (rawMovies instanceof List<?>) {
+        for (Object obj : (List<?>) rawMovies) {
+            if (obj instanceof Movie) {
+                Movie m = (Movie) obj;
+                moviesById.put(m.getMovieId(), m);
+            }
+        }
     }
+    // ==================================================
+    // PAYMENT RECORDS
+    // ==================================================
+    Object rawPayments =
+            request.getAttribute("payments");
+    if (!(rawPayments instanceof List<?>))
+        rawPayments = request.getAttribute("myPayments");
+    boolean paymentsLoaded =
+            rawPayments instanceof List<?>;
+    List<Payment> unlinkedPayments =
+            new ArrayList<>();
+    Map<String, Payment> paymentsByRental =
+            new HashMap<>();
+    int pendingCount = 0;
+    if (rawPayments instanceof List<?>) {
+        for (Object obj : (List<?>) rawPayments) {
+            if (!(obj instanceof Payment))
+                continue;
+            Payment p = (Payment) obj;
+            if (!userId.equals(p.getUserId()))
+                continue;
+            if (p.isPending())
+                pendingCount++;
+            if (p.hasRental()) {
+                paymentsByRental.put(
+                        p.getRentalId(), p
+                );
+            } else {
+                unlinkedPayments.add(p);
+            }
+        }
+    }
+    // ==================================================
+    // DASHBOARD STATISTICS
+    // ==================================================
+    int activeCount = 0;
+    int returnedCount = 0;
+    for (Object rental : rentals) {
+        String s = status(rental);
+        if (active(s))
+            activeCount++;
+        else if (returned(s))
+            returnedCount++;
+    }
+    String csrf =
+            (String) request.getAttribute("rentalCsrfToken");
+    if (csrf == null) {
+        Object token =
+                session.getAttribute("rentalCsrfToken");
+        csrf = token instanceof String
+                ? (String) token : "";
+    }
+    String message =
+            (String) request.getAttribute("message");
+    String error =
+            request.getParameter("error");
 %>
-
-
 <!DOCTYPE html>
-
 <html lang="en">
-
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        My Rentals | CineRent
-    </title>
-
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Rentals &amp; Payments | CineRent</title>
     <link
             rel="stylesheet"
             href="<%= ctx %>/css/style.css"
     >
-
-
     <style>
-
-        /* =====================================================
-           PAGE
-        ====================================================== */
-
+        :root {
+            color-scheme: dark;
+            --bg: #070913;
+            --panel: #12192a;
+            --line: #283148;
+            --muted: #94a3b8;
+        }
+        * {
+            box-sizing: border-box;
+        }
         body {
-            background:
-                    #050811;
-
-            color:
-                    #ffffff;
+            margin: 0;
+            background: var(--bg);
+            color: #f8fafc;
+            font-family: Inter, system-ui, Arial, sans-serif;
         }
-
-
-        .rentals-page {
-            min-height:
-                    calc(100vh - 80px);
-
-            padding:
-                    45px
-                    0
-                    80px;
-
-            background:
-
-                    radial-gradient(
-                            circle at 75% 5%,
-                            rgba(
-                                    124,
-                                    58,
-                                    237,
-                                    0.16
-                            ),
-                            transparent 28%
-                    ),
-
-                    radial-gradient(
-                            circle at 10% 60%,
-                            rgba(
-                                    37,
-                                    99,
-                                    235,
-                                    0.08
-                            ),
-                            transparent 24%
-                    );
+        a {
+            color: inherit;
+            text-decoration: none;
         }
-
-
-        .rentals-container {
-            width:
-                    92%;
-
-            max-width:
-                    1380px;
-
-            margin:
-                    0 auto;
-        }
-
-
-        /* =====================================================
-           NAVIGATION
-        ====================================================== */
-
-        .customer-navbar {
-            position:
-                    sticky;
-
+        .mr-nav {
+            background: #090e1a;
+            border-bottom: 1px solid var(--line);
+            position: sticky;
             top: 0;
-
-            z-index:
-                    1000;
-
-            background:
-                    rgba(
-                            4,
-                            7,
-                            14,
-                            0.88
-                    );
-
-            border-bottom:
-                    1px solid
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.06
-                    );
-
-            backdrop-filter:
-                    blur(18px);
+            z-index: 10;
         }
-
-
-        .customer-navbar-inner {
-            width:
-                    92%;
-
-            max-width:
-                    1380px;
-
-            min-height:
-                    76px;
-
-            margin:
-                    0 auto;
-
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    25px;
+        .mr-nav-inner {
+            max-width: 1300px;
+            margin: auto;
+            padding: 16px 22px;
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
         }
-
-
-        .customer-brand {
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    10px;
-
-            color:
-                    #ffffff;
-
-            text-decoration:
-                    none;
-
-            font-size:
-                    20px;
-
-            font-weight:
-                    850;
-
-            letter-spacing:
-                    -0.5px;
+        .mr-brand {
+            font-size: 22px;
+            font-weight: 900;
+            color: #c4b5fd;
         }
-
-
-        .customer-brand-icon {
-            width:
-                    40px;
-
-            height:
-                    40px;
-
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    center;
-
-            border-radius:
-                    13px;
-
-            background:
-                    linear-gradient(
-                            135deg,
-                            #6d28d9,
-                            #8b5cf6
-                    );
-
-            box-shadow:
-                    0
-                    8px
-                    25px
-                    rgba(
-                            124,
-                            58,
-                            237,
-                            0.30
-                    );
+        .mr-links {
+            margin-left: auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
         }
-
-
-        .customer-nav-links {
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    6px;
-
-            margin-left:
-                    auto;
+        .mr-links a {
+            color: #cbd5e1;
         }
-
-
-        .customer-nav-link {
-            padding:
-                    9px
-                    12px;
-
-            border-radius:
-                    9px;
-
-            color:
-                    #94a3b8;
-
-            text-decoration:
-                    none;
-
-            font-size:
-                    12px;
-
-            font-weight:
-                    700;
-
-            transition:
-                    0.2s ease;
+        .mr-links a:hover,
+        .mr-links a.current {
+            color: #c4b5fd;
         }
-
-
-        .customer-nav-link:hover,
-        .customer-nav-link.active {
-            color:
-                    #ffffff;
-
-            background:
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.06
-                    );
+        .mr-wrap {
+            max-width: 1300px;
+            margin: auto;
+            padding: 35px 22px 70px;
         }
-
-
-        .customer-profile {
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    10px;
-
-            margin-left:
-                    10px;
+        .mr-hero {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            gap: 22px;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(
+                    120deg,
+                    #1c1740,
+                    #10192c 75%
+            );
         }
-
-
-        .customer-avatar {
-            width:
-                    37px;
-
-            height:
-                    37px;
-
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    center;
-
-            border-radius:
-                    50%;
-
-            background:
-                    linear-gradient(
-                            135deg,
-                            #8b5cf6,
-                            #3b82f6
-                    );
-
-            font-size:
-                    13px;
-
-            font-weight:
-                    800;
+        .mr-hero h1 {
+            font-size: clamp(29px, 4vw, 44px);
+            margin: 8px 0;
         }
-
-
-        .customer-profile-name {
-            max-width:
-                    130px;
-
-            overflow:
-                    hidden;
-
-            text-overflow:
-                    ellipsis;
-
-            white-space:
-                    nowrap;
-
-            font-size:
-                    12px;
-
-            font-weight:
-                    700;
+        .mr-hero h1 span {
+            color: #a78bfa;
         }
-
-
-        .customer-logout {
-            padding:
-                    8px
-                    12px;
-
-            border-radius:
-                    8px;
-
-            border:
-                    1px solid
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.10
-                    );
-
-            color:
-                    #cbd5e1;
-
-            background:
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.04
-                    );
-
-            text-decoration:
-                    none;
-
-            font-size:
-                    11px;
-
-            font-weight:
-                    700;
+        .mr-hero p,
+        .mr-sub {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
         }
-
-
-        .customer-logout:hover {
-            color:
-                    #fca5a5;
-
-            border-color:
-                    rgba(
-                            239,
-                            68,
-                            68,
-                            0.30
-                    );
+        .mr-tag {
+            color: #c4b5fd;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-
-
-        /* =====================================================
-           HEADER
-        ====================================================== */
-
-        .rentals-header {
-            display:
-                    flex;
-
-            justify-content:
-                    space-between;
-
-            align-items:
-                    flex-end;
-
-            gap:
-                    25px;
-
-            margin-bottom:
-                    28px;
+        .mr-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9px;
+            padding: 11px 15px;
+            border: 1px solid #39445b;
+            background: #202b41;
+            color: white;
+            font-size: 12px;
+            font-weight: 750;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
         }
-
-
-        .rentals-badge {
-            display:
-                    inline-flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    7px;
-
-            margin-bottom:
-                    13px;
-
-            padding:
-                    7px
-                    11px;
-
-            border-radius:
-                    999px;
-
-            color:
-                    #c4b5fd;
-
-            background:
-                    rgba(
-                            124,
-                            58,
-                            237,
-                            0.10
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            139,
-                            92,
-                            246,
-                            0.22
-                    );
-
-            font-size:
-                    10px;
-
-            font-weight:
-                    800;
-
-            text-transform:
-                    uppercase;
-
-            letter-spacing:
-                    0.6px;
+        .mr-btn:hover {
+            filter: brightness(1.15);
         }
-
-
-        .rentals-title {
-            margin: 0;
-
-            font-size:
-                    clamp(
-                            32px,
-                            4vw,
-                            48px
-                    );
-
-            letter-spacing:
-                    -1.7px;
+        .mr-primary {
+            background: #7c3aed;
+            border-color: #7c3aed;
         }
-
-
-        .rentals-description {
-            margin:
-                    9px
-                    0
-                    0;
-
-            color:
-                    #94a3b8;
-
-            line-height:
-                    1.7;
-
-            font-size:
-                    14px;
+        .mr-danger {
+            background: #381e2d;
+            color: #fecaca;
+            border-color: #783344;
         }
-
-
-        .browse-button {
-            min-height:
-                    45px;
-
-            display:
-                    inline-flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    center;
-
-            gap:
-                    7px;
-
-            padding:
-                    0
-                    17px;
-
-            border-radius:
-                    10px;
-
-            color:
-                    #ffffff;
-
-            text-decoration:
-                    none;
-
-            font-size:
-                    12px;
-
-            font-weight:
-                    750;
-
-            background:
-                    linear-gradient(
-                            135deg,
-                            #6d28d9,
-                            #8b5cf6
-                    );
-
-            box-shadow:
-                    0
-                    12px
-                    30px
-                    rgba(
-                            124,
-                            58,
-                            237,
-                            0.22
-                    );
-
-            transition:
-                    0.2s ease;
+        .mr-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin: 22px 0 34px;
         }
-
-
-        .browse-button:hover {
-            transform:
-                    translateY(-2px);
+        .mr-stat {
+            padding: 20px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 15px;
         }
-
-
-        /* =====================================================
-           STATISTICS
-        ====================================================== */
-
-        .rental-stats {
-            display:
-                    grid;
-
-            grid-template-columns:
-                    repeat(
-                            3,
-                            1fr
-                    );
-
-            gap:
-                    15px;
-
-            margin-bottom:
-                    28px;
+        .mr-stat small {
+            color: var(--muted);
+            font-size: 12px;
         }
-
-
-        .rental-stat-card {
-            position:
-                    relative;
-
-            overflow:
-                    hidden;
-
-            padding:
-                    21px;
-
-            border-radius:
-                    17px;
-
-            background:
-                    rgba(
-                            23,
-                            33,
-                            54,
-                            0.76
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            148,
-                            163,
-                            184,
-                            0.10
-                    );
+        .mr-stat strong {
+            display: block;
+            font-size: 29px;
+            margin-top: 7px;
         }
-
-
-        .rental-stat-card::after {
-            content: "";
-
-            position:
-                    absolute;
-
-            width:
-                    100px;
-
-            height:
-                    100px;
-
-            right:
-                    -45px;
-
-            bottom:
-                    -50px;
-
-            border-radius:
-                    50%;
-
-            background:
-                    rgba(
-                            124,
-                            58,
-                            237,
-                            0.12
-                    );
+        .mr-section {
+            margin-top: 34px;
         }
-
-
-        .rental-stat-icon {
-            margin-bottom:
-                    15px;
-
-            font-size:
-                    22px;
+        .mr-section h2 {
+            margin: 0 0 5px;
+            font-size: 23px;
         }
-
-
-        .rental-stat-value {
-            margin-bottom:
-                    5px;
-
-            font-size:
-                    27px;
-
-            font-weight:
-                    850;
+        .mr-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 18px 0;
         }
-
-
-        .rental-stat-label {
-            color:
-                    #94a3b8;
-
-            font-size:
-                    11px;
+        .mr-toolbar input,
+        .mr-toolbar select {
+            border: 1px solid #37425a;
+            background: #111a2c;
+            color: white;
+            padding: 12px;
+            border-radius: 9px;
+            font: inherit;
+            font-size: 13px;
         }
-
-
-        .total-stat {
-            color:
-                    #a78bfa;
+        .mr-toolbar input {
+            flex: 1;
+            min-width: 220px;
         }
-
-
-        .active-stat {
-            color:
-                    #facc15;
+        .mr-toolbar select {
+            min-width: 150px;
         }
-
-
-        .returned-stat {
-            color:
-                    #4ade80;
+        .mr-count {
+            color: var(--muted);
+            font-size: 12px;
+            align-self: center;
         }
-
-
-        /* =====================================================
-           SECTION HEADER
-        ====================================================== */
-
-        .rental-section-header {
-            display:
-                    flex;
-
-            justify-content:
-                    space-between;
-
-            align-items:
-                    center;
-
-            gap:
-                    15px;
-
-            margin:
-                    35px
-                    0
-                    17px;
+        .mr-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
         }
-
-
-        .rental-section-header h2 {
-            margin: 0;
-
-            font-size:
-                    21px;
+        .mr-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 132px minmax(0, 1fr);
         }
-
-
-        .rental-section-header p {
-            margin:
-                    5px
-                    0
-                    0;
-
-            color:
-                    #64748b;
-
-            font-size:
-                    12px;
+        .mr-poster {
+            width: 132px;
+            height: 100%;
+            min-height: 240px;
+            object-fit: cover;
+            background: #202c40;
         }
-
-
-        /* =====================================================
-           RENTAL CARDS
-        ====================================================== */
-
-        .rental-list {
-            display:
-                    grid;
-
-            gap:
-                    15px;
+        .mr-card-content {
+            padding: 18px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-
-
-        .rental-card {
-            display:
-                    grid;
-
-            grid-template-columns:
-                    90px
-                    minmax(
-                            190px,
-                            1.2fr
-                    )
-                    repeat(
-                            3,
-                            minmax(
-                                    125px,
-                                    0.7fr
-                            )
-                    )
-                    minmax(
-                            140px,
-                            0.8fr
-                    );
-
-            gap:
-                    18px;
-
-            align-items:
-                    center;
-
-            padding:
-                    17px;
-
-            border-radius:
-                    18px;
-
-            background:
-                    rgba(
-                            23,
-                            33,
-                            54,
-                            0.72
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            148,
-                            163,
-                            184,
-                            0.10
-                    );
-
-            transition:
-                    transform
-                    0.22s ease,
-                    border-color
-                    0.22s ease;
+        .mr-card-head {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-
-
-        .rental-card:hover {
-            transform:
-                    translateY(-2px);
-
-            border-color:
-                    rgba(
-                            139,
-                            92,
-                            246,
-                            0.28
-                    );
+        .mr-card h3 {
+            margin: 0 0 5px;
+            font-size: 18px;
+            overflow-wrap: anywhere;
         }
-
-
-        /* =====================================================
-           POSTER
-        ====================================================== */
-
-        .rental-poster {
-            width:
-                    72px;
-
-            height:
-                    105px;
-
-            overflow:
-                    hidden;
-
-            border-radius:
-                    11px;
-
-            background:
-                    #111827;
-
-            border:
-                    1px solid
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.07
-                    );
-
-            box-shadow:
-                    0
-                    8px
-                    22px
-                    rgba(
-                            0,
-                            0,
-                            0,
-                            0.26
-                    );
+        .mr-meta {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.6;
         }
-
-
-        .rental-poster img {
-            width:
-                    100%;
-
-            height:
-                    100%;
-
-            display:
-                    block;
-
-            object-fit:
-                    cover;
+        .mr-badge {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 800;
+            border: 1px solid #465169;
+            color: #cbd5e1;
+            white-space: nowrap;
         }
-
-
-        /* =====================================================
-           MOVIE
-        ====================================================== */
-
-        .rental-movie-name {
-            margin-bottom:
-                    6px;
-
-            font-size:
-                    16px;
-
-            font-weight:
-                    800;
+        .mr-badge.active,
+        .mr-badge.paid {
+            color: #86efac;
+            border-color: #166534;
+            background: #102c25;
         }
-
-
-        .rental-movie-meta {
-            color:
-                    #64748b;
-
-            font-size:
-                    11px;
-
-            line-height:
-                    1.7;
+        .mr-badge.returned {
+            color: #93c5fd;
+            border-color: #1e40af;
+            background: #152445;
         }
-
-
-        .rental-id {
-            display:
-                    inline-flex;
-
-            margin-top:
-                    8px;
-
-            padding:
-                    4px
-                    7px;
-
-            border-radius:
-                    7px;
-
-            background:
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.04
-                    );
-
-            color:
-                    #94a3b8;
-
-            font-size:
-                    10px;
+        .mr-badge.pending {
+            color: #fde68a;
+            border-color: #92400e;
+            background: #3a2816;
         }
-
-
-        /* =====================================================
-           DETAIL CELL
-        ====================================================== */
-
-        .rental-detail-label {
-            display:
-                    block;
-
-            margin-bottom:
-                    6px;
-
-            color:
-                    #64748b;
-
-            font-size:
-                    9px;
-
-            font-weight:
-                    800;
-
-            text-transform:
-                    uppercase;
-
-            letter-spacing:
-                    0.7px;
+        .mr-badge.failed,
+        .mr-badge.rejected {
+            color: #fca5a5;
+            border-color: #991b1b;
+            background: #391b25;
         }
-
-
-        .rental-detail-value {
-            color:
-                    #e2e8f0;
-
-            font-size:
-                    12px;
-
-            font-weight:
-                    650;
+        .mr-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            padding: 13px 0;
         }
-
-
-        /* =====================================================
-           STATUS
-        ====================================================== */
-
-        .rental-status {
-            display:
-                    inline-flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    6px;
-
-            padding:
-                    7px
-                    10px;
-
-            border-radius:
-                    999px;
-
-            font-size:
-                    10px;
-
-            font-weight:
-                    800;
+        .mr-details small {
+            display: block;
+            color: #94a3b8;
+            font-size: 10px;
+            margin-bottom: 5px;
         }
-
-
-        .rental-status.active {
-            color:
-                    #fde68a;
-
-            background:
-                    rgba(
-                            234,
-                            179,
-                            8,
-                            0.10
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            234,
-                            179,
-                            8,
-                            0.20
-                    );
+        .mr-details strong {
+            display: block;
+            font-size: 12px;
+            font-weight: 650;
+            overflow-wrap: anywhere;
         }
-
-
-        .rental-status.returned {
-            color:
-                    #86efac;
-
-            background:
-                    rgba(
-                            34,
-                            197,
-                            94,
-                            0.10
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            34,
-                            197,
-                            94,
-                            0.20
-                    );
+        .mr-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: auto;
         }
-
-
-        .status-dot {
-            width:
-                    6px;
-
-            height:
-                    6px;
-
-            border-radius:
-                    50%;
-
-            background:
-                    currentColor;
-        }
-
-
-        /* =====================================================
-           ACTIONS
-        ====================================================== */
-
-        .rental-actions {
-            display:
-                    flex;
-
-            flex-direction:
-                    column;
-
-            gap:
-                    8px;
-        }
-
-
-        .rental-actions form {
+        .mr-actions form {
             margin: 0;
         }
-
-
-        .rental-action-button {
-            width:
-                    100%;
-
-            min-height:
-                    38px;
-
-            display:
-                    inline-flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    center;
-
-            gap:
-                    6px;
-
-            padding:
-                    0
-                    12px;
-
-            border:
-                    0;
-
-            border-radius:
-                    9px;
-
-            cursor:
-                    pointer;
-
-            text-decoration:
-                    none;
-
-            font-size:
-                    11px;
-
-            font-weight:
-                    750;
+        .mr-empty {
+            text-align: center;
+            padding: 45px 20px;
+            background: #11192a;
+            border: 1px dashed #3b465e;
+            border-radius: 15px;
         }
-
-
-        .return-button {
-            color:
-                    #ffffff;
-
-            background:
-                    linear-gradient(
-                            135deg,
-                            #7c3aed,
-                            #8b5cf6
-                    );
+        .mr-empty h3 {
+            margin: 0 0 7px;
         }
-
-
-        .review-button {
-            color:
-                    #fef3c7;
-
-            border:
-                    1px solid
-                    rgba(
-                            234,
-                            179,
-                            8,
-                            0.20
-                    );
-
-            background:
-                    rgba(
-                            234,
-                            179,
-                            8,
-                            0.08
-                    );
+        .mr-empty p {
+            color: var(--muted);
+            font-size: 13px;
         }
-
-
-        .completed-button {
-            color:
-                    #86efac;
-
-            background:
-                    rgba(
-                            34,
-                            197,
-                            94,
-                            0.07
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            34,
-                            197,
-                            94,
-                            0.16
-                    );
+        .mr-payment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px;
         }
-
-
-        /* =====================================================
-           EMPTY
-        ====================================================== */
-
-        .rentals-empty {
-            padding:
-                    65px
-                    25px;
-
-            text-align:
-                    center;
-
-            border-radius:
-                    20px;
-
-            border:
-                    1px solid
-                    rgba(
-                            148,
-                            163,
-                            184,
-                            0.10
-                    );
-
-            background:
-                    rgba(
-                            23,
-                            33,
-                            54,
-                            0.55
-                    );
+        .mr-payment {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            padding: 20px;
         }
-
-
-        .rentals-empty-icon {
-            margin-bottom:
-                    14px;
-
-            font-size:
-                    44px;
+        .mr-payment-top,
+        .mr-payment-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
-
-
-        .rentals-empty h3 {
-            margin:
-                    0
-                    0
-                    9px;
-
-            font-size:
-                    20px;
+        .mr-payment h3 {
+            margin: 12px 0 5px;
         }
-
-
-        .rentals-empty p {
-            margin:
-                    0
-                    auto
-                    20px;
-
-            max-width:
-                    420px;
-
-            color:
-                    #94a3b8;
-
-            font-size:
-                    13px;
-
-            line-height:
-                    1.7;
+        .mr-payment p {
+            color: var(--muted);
+            font-size: 12px;
         }
-
-
-        /* =====================================================
-           INFO BANNER
-        ====================================================== */
-
-        .rental-info-banner {
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            gap:
-                    13px;
-
-            margin-top:
-                    28px;
-
-            padding:
-                    17px;
-
-            border-radius:
-                    14px;
-
-            background:
-                    rgba(
-                            59,
-                            130,
-                            246,
-                            0.06
-                    );
-
-            border:
-                    1px solid
-                    rgba(
-                            59,
-                            130,
-                            246,
-                            0.14
-                    );
-
-            color:
-                    #94a3b8;
-
-            font-size:
-                    12px;
-
-            line-height:
-                    1.6;
+        .mr-payment-bottom {
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
         }
-
-
-        .rental-info-icon {
-            width:
-                    36px;
-
-            height:
-                    36px;
-
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    center;
-
-            flex-shrink:
-                    0;
-
-            border-radius:
-                    10px;
-
-            background:
-                    rgba(
-                            59,
-                            130,
-                            246,
-                            0.10
-                    );
+        .mr-alert {
+            padding: 14px;
+            border: 1px solid #2e4770;
+            background: #15233a;
+            color: #bfdbfe;
+            border-radius: 10px;
+            margin: 18px 0;
+            font-size: 13px;
         }
-
-
-        /* =====================================================
-           FOOTER
-        ====================================================== */
-
-        .rentals-footer {
-            border-top:
-                    1px solid
-                    rgba(
-                            255,
-                            255,
-                            255,
-                            0.06
-                    );
-
-            background:
-                    #04070e;
+        .mr-alert.error {
+            border-color: #7f1d1d;
+            background: #351923;
+            color: #fecaca;
         }
-
-
-        .rentals-footer-inner {
-            width:
-                    92%;
-
-            max-width:
-                    1380px;
-
-            min-height:
-                    75px;
-
-            margin:
-                    0 auto;
-
-            display:
-                    flex;
-
-            align-items:
-                    center;
-
-            justify-content:
-                    space-between;
-
-            color:
-                    #475569;
-
-            font-size:
-                    10px;
+        @media (max-width: 900px) {
+            .mr-grid {
+                grid-template-columns: 1fr;
+            }
         }
-
-
-        /* =====================================================
-           RESPONSIVE
-        ====================================================== */
-
-        @media (
-        max-width: 1100px
-        ) {
-
-            .rental-card {
-                grid-template-columns:
-                        80px
-                        minmax(
-                                180px,
-                                1fr
-                        )
-                        repeat(
-                                2,
-                                minmax(
-                                        110px,
-                                        0.7fr
-                                )
-                        )
-                        minmax(
-                                130px,
-                                0.7fr
-                        );
+        @media (max-width: 680px) {
+            .mr-links {
+                margin-left: 0;
+                width: 100%;
             }
-
-
-            .return-date-column {
-                display:
-                        none;
+            .mr-hero {
+                align-items: flex-start;
+                flex-direction: column;
             }
-
+            .mr-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .mr-payment-grid {
+                grid-template-columns: 1fr;
+            }
         }
-
-
-        @media (
-        max-width: 850px
-        ) {
-
-            .customer-nav-links {
-                display:
-                        none;
+        @media (max-width: 430px) {
+            .mr-card {
+                grid-template-columns: 95px minmax(0, 1fr);
             }
-
-
-            .rental-stats {
-                grid-template-columns:
-                        1fr
-                        1fr
-                        1fr;
+            .mr-poster {
+                width: 95px;
             }
-
-
-            .rental-card {
-                grid-template-columns:
-                        75px
-                        1fr
-                        130px;
+            .mr-card-content {
+                padding: 12px;
             }
-
-
-            .rental-date-column,
-            .return-date-column {
-                display:
-                        none;
+            .mr-card h3 {
+                font-size: 15px;
             }
-
+            .mr-details {
+                grid-template-columns: 1fr;
+            }
+            .mr-btn {
+                padding: 9px;
+                font-size: 11px;
+            }
         }
-
-
-        @media (
-        max-width: 650px
-        ) {
-
-            .customer-profile-name {
-                display:
-                        none;
-            }
-
-
-            .rentals-header {
-                flex-direction:
-                        column;
-
-                align-items:
-                        flex-start;
-            }
-
-
-            .browse-button {
-                width:
-                        100%;
-            }
-
-
-            .rental-stats {
-                grid-template-columns:
-                        1fr;
-            }
-
-
-            .rental-card {
-                grid-template-columns:
-                        70px
-                        1fr;
-
-                gap:
-                        14px;
-            }
-
-
-            .rental-status-column,
-            .rental-actions {
-                grid-column:
-                        1 / -1;
-            }
-
-
-            .rental-actions {
-                flex-direction:
-                        row;
-            }
-
-
-            .rental-actions > * {
-                flex:
-                        1;
-            }
-
-
-            .rentals-footer-inner {
-                flex-direction:
-                        column;
-
-                justify-content:
-                        center;
-
-                gap:
-                        5px;
-
-                padding:
-                        15px
-                        0;
-            }
-
-        }
-
     </style>
-
 </head>
-
-
 <body>
-
-
-<!-- =========================================================
-     NAVBAR
-========================================================= -->
-
-<header class="customer-navbar">
-
-
-    <div class="customer-navbar-inner">
-
-
-        <!-- BRAND -->
-
-        <a
-                href="<%= ctx %>/"
-                class="customer-brand"
-        >
-
-
-            <span class="customer-brand-icon">
-
-                🎬
-
-            </span>
-
-
-            CineRent
-
+<!-- NAVIGATION -->
+<header class="mr-nav">
+    <nav class="mr-nav-inner" aria-label="Customer navigation">
+        <a href="<%= ctx %>/" class="mr-brand">
+            🎬 CineRent
         </a>
-
-
-        <!-- NAVIGATION -->
-
-        <nav class="customer-nav-links">
-
-
-            <a
-                    href="<%= ctx %>/"
-                    class="customer-nav-link"
-            >
-
-                Home
-
-            </a>
-
-
-            <a
-                    href="<%= ctx %>/catalog"
-                    class="customer-nav-link"
-            >
-
+        <div class="mr-links">
+            <a href="<%= ctx %>/">Home</a>
+            <a href="<%= ctx %>/catalog">
                 Movies
-
             </a>
-
-
             <a
                     href="<%= ctx %>/rentals"
-                    class="customer-nav-link active"
+                    class="current"
+                    aria-current="page"
             >
-
                 My Rentals
-
             </a>
-
-
-            <a
-                    href="<%= ctx %>/recently-watched"
-                    class="customer-nav-link"
-            >
-
+            <a href="<%= ctx %>/recently-watched">
                 Recently Watched
-
             </a>
-
-
-        </nav>
-
-
-        <!-- USER -->
-
-        <div class="customer-profile">
-
-
-            <div class="customer-avatar">
-
-                <%= HtmlUtil.escape(
-                        userInitial
-                ) %>
-
-            </div>
-
-
-            <span class="customer-profile-name">
-
-                <%= HtmlUtil.escape(
-                        userName
-                ) %>
-
-            </span>
-
-
-            <a
-                    href="<%= ctx %>/logout"
-                    class="customer-logout"
-            >
-
+            <a href="<%= ctx %>/logout">
                 Logout
-
             </a>
-
-
         </div>
-
-
-    </div>
-
-
+    </nav>
 </header>
-
-
-<!-- =========================================================
-     PAGE
-========================================================= -->
-
-<main class="rentals-page">
-
-
-    <div class="rentals-container">
-
-
-        <!-- =====================================================
-             HEADER
-        ====================================================== -->
-
-        <section class="rentals-header">
-
-
-            <div>
-
-
-                <div class="rentals-badge">
-
-                    📀 Rental Library
-
-                </div>
-
-
-                <h1 class="rentals-title">
-
-                    My Rentals
-
-                </h1>
-
-
-                <p class="rentals-description">
-
-                    Manage your active rentals,
-                    return movies and revisit titles
-                    you've already watched.
-
-                </p>
-
-
+<main class="mr-wrap">
+    <!-- HEADER -->
+    <section class="mr-hero">
+        <div>
+            <div class="mr-tag">
+                Customer Dashboard
             </div>
-
-
-            <a
-                    href="<%= ctx %>/catalog"
-                    class="browse-button"
-            >
-
-                🎬 Browse More Movies
-
-                <span>
-                    →
-                </span>
-
-            </a>
-
-
-        </section>
-
-
-        <!-- =====================================================
-             STATS
-        ====================================================== -->
-
-        <section class="rental-stats">
-
-
-            <!-- TOTAL -->
-
-            <div class="rental-stat-card">
-
-
-                <div class="rental-stat-icon">
-
-                    🎞️
-
-                </div>
-
-
-                <div class="rental-stat-value total-stat">
-
-                    <%= totalRentalCount %>
-
-                </div>
-
-
-                <div class="rental-stat-label">
-
-                    Total Rentals
-
-                </div>
-
-
-            </div>
-
-
-            <!-- ACTIVE -->
-
-            <div class="rental-stat-card">
-
-
-                <div class="rental-stat-icon">
-
-                    ▶️
-
-                </div>
-
-
-                <div class="rental-stat-value active-stat">
-
-                    <%= activeRentalCount %>
-
-                </div>
-
-
-                <div class="rental-stat-label">
-
-                    Currently Rented
-
-                </div>
-
-
-            </div>
-
-
-            <!-- RETURNED -->
-
-            <div class="rental-stat-card">
-
-
-                <div class="rental-stat-icon">
-
-                    ✓
-
-                </div>
-
-
-                <div class="rental-stat-value returned-stat">
-
-                    <%= returnedRentalCount %>
-
-                </div>
-
-
-                <div class="rental-stat-label">
-
-                    Completed Rentals
-
-                </div>
-
-
-            </div>
-
-
-        </section>
-
-
-        <!-- =====================================================
-             LIST HEADER
-        ====================================================== -->
-
-        <div class="rental-section-header">
-
-
-            <div>
-
-
-                <h2>
-
-                    Rental History
-
-                </h2>
-
-
-                <p>
-
-                    Your active and completed
-                    CineRent rentals.
-
-                </p>
-
-
-            </div>
-
-
-        </div>
-
-
-        <!-- =====================================================
-             EMPTY STATE
-        ====================================================== -->
-
-        <%
-            if (
-                    rentals == null
-                            ||
-                            rentals.isEmpty()
-            ) {
-        %>
-
-
-        <section class="rentals-empty">
-
-
-            <div class="rentals-empty-icon">
-
-                🎬
-
-            </div>
-
-
-            <h3>
-
-                You haven't rented any movies yet.
-
-            </h3>
-
-
+            <h1>
+                My <span>Rentals &amp; Payments</span>
+            </h1>
             <p>
-
-                Start exploring the CineRent catalogue
-                and rent a movie you would like to watch.
-
+                Welcome, <%= esc(userName) %>.
+                Manage your rentals, returns and payment activity.
             </p>
-
-
+        </div>
+        <a
+                class="mr-btn mr-primary"
+                href="<%= ctx %>/catalog"
+        >
+            + Browse Movies
+        </a>
+    </section>
+    <!-- MESSAGES -->
+    <% if (message != null && !message.isBlank()) { %>
+    <div class="mr-alert" role="status">
+        <%= esc(message) %>
+    </div>
+    <% } %>
+    <% if (error != null && !error.isBlank()) { %>
+    <div class="mr-alert error" role="alert">
+        Your request could not be completed.
+        Please try again.
+    </div>
+    <% } %>
+    <!-- STATISTICS -->
+    <section class="mr-stats" aria-label="Rental statistics">
+        <div class="mr-stat">
+            <small>Total Rentals</small>
+            <strong><%= rentals.size() %></strong>
+        </div>
+        <div class="mr-stat">
+            <small>Active Rentals</small>
+            <strong style="color:#86efac">
+                <%= activeCount %>
+            </strong>
+        </div>
+        <div class="mr-stat">
+            <small>Returned Movies</small>
+            <strong><%= returnedCount %></strong>
+        </div>
+        <div class="mr-stat">
+            <small>Pending Payments</small>
+            <strong style="color:#fde68a">
+                <%= pendingCount %>
+            </strong>
+        </div>
+    </section>
+    <!-- RENTALS -->
+    <section class="mr-section">
+        <h2>My Movie Rentals</h2>
+        <p class="mr-sub">
+            View your rental history and return active movies.
+        </p>
+        <!-- SEARCH -->
+        <div class="mr-toolbar">
+            <input
+                    id="rentalSearch"
+                    type="search"
+                    placeholder="Search movie title or rental ID"
+                    aria-label="Search rentals"
+            >
+            <select
+                    id="rentalFilter"
+                    aria-label="Filter by rental status"
+            >
+                <option value="ALL">All Rentals</option>
+                <option value="ACTIVE">Active</option>
+                <option value="RETURNED">Returned</option>
+                <option value="OTHER">Other</option>
+            </select>
+            <span class="mr-count">
+                Showing
+                <strong id="visibleCount">
+                    <%= rentals.size() %>
+                </strong>
+                rental(s)
+            </span>
+        </div>
+        <% if (rentals.isEmpty()) { %>
+        <div class="mr-empty">
+            <h3>No rentals yet</h3>
+            <p>
+                Browse the catalogue and complete
+                checkout to rent a movie.
+            </p>
             <a
                     href="<%= ctx %>/catalog"
-                    class="browse-button"
+                    class="mr-btn mr-primary"
             >
-
-                Browse Movies
-
+                Explore Movies
             </a>
-
-
-        </section>
-
-
-        <%
-        } else {
-        %>
-
-
-        <!-- =====================================================
-             RENTAL LIST
-        ====================================================== -->
-
-        <section class="rental-list">
-
-
+        </div>
+        <% } else { %>
+        <div class="mr-grid" id="rentalGrid">
             <%
-                for (
-                        Rental rental : rentals
-                ) {
-
-
+                for (Object rental : rentals) {
+                    String rentalId = value(
+                            rental, "getRentalId", "getId"
+                    );
+                    String movieId = value(
+                            rental, "getMovieId"
+                    );
+                    String rentalStatus = status(rental);
+                    boolean isActive =
+                            active(rentalStatus);
+                    boolean isReturned =
+                            returned(rentalStatus);
+                    String filter = isActive
+                            ? "ACTIVE"
+                            : isReturned ? "RETURNED" : "OTHER";
+                    String badge = isActive
+                            ? "active"
+                            : isReturned ? "returned" : "";
                     Movie movie =
-                            null;
-
-
-                    if (
-                            movieService != null
-                                    &&
-                                    rental.getMovieId()
-                                            != null
-                    ) {
-
-                        movie =
-                                movieService
-                                        .getMovieById(
-                                                rental.getMovieId()
-                                        );
-                    }
-
-
-                    boolean active =
-                            "RENTED"
-                                    .equalsIgnoreCase(
-                                            rental.getStatus()
-                                    );
-
-
-                    boolean returned =
-                            "RETURNED"
-                                    .equalsIgnoreCase(
-                                            rental.getStatus()
-                                    );
-
-
-                    String movieTitle =
-                            movie != null
-                                    &&
-                                    movie.getTitle()
-                                            != null
-                                    ? movie.getTitle()
-                                    : rental.getMovieId();
-
-
-                    String movieGenre =
-                            movie != null
-                                    &&
-                                    movie.getGenre()
-                                            != null
-                                    ? movie.getGenre()
-                                    : "Movie";
+                            moviesById.get(movieId);
+                    String title = movie == null
+                            ? "Movie " + movieId
+                            : movie.getTitle();
+                    String genre = movie == null
+                            ? ""
+                            : movie.getGenre();
+                    Object rentedOn = read(
+                            rental,
+                            "getRentalDate",
+                            "getRentedAt",
+                            "getStartDate",
+                            "getCreatedAt"
+                    );
+                    Object dueOn = read(
+                            rental,
+                            "getDueDate",
+                            "getExpectedReturnDate",
+                            "getReturnDate"
+                    );
+                    Object returnedOn = read(
+                            rental,
+                            "getActualReturnDate",
+                            "getReturnedAt",
+                            "getReturnDate"
+                    );
+                    Payment payment =
+                            paymentsByRental.get(rentalId);
             %>
-
-
-            <article class="rental-card">
-
-
-                <!-- =================================================
-                     POSTER
-                ================================================== -->
-
-                <div class="rental-poster">
-
-
-                    <img
-                            src="<%= ctx %>/movie-image?id=<%= HtmlUtil.escape(
-                                    rental.getMovieId()
-                            ) %>"
-
-                            alt="<%= HtmlUtil.escape(
-                                    movieTitle
-                            ) %>"
-
-                            loading="lazy"
-
-                            onerror="
-                                    this.onerror=null;
-                                    this.src='<%= ctx %>/images/posters/default.svg';
-                                    "
-                    >
-
-
-                </div>
-
-
-                <!-- =================================================
-                     MOVIE
-                ================================================== -->
-
-                <div>
-
-
-                    <div class="rental-movie-name">
-
-                        <%= HtmlUtil.escape(
-                                movieTitle
-                        ) %>
-
+            <article
+                    class="mr-card"
+                    data-rental
+                    data-status="<%= filter %>"
+                    data-search="<%= esc(title + " " + movieId + " " + rentalId) %>"
+            >
+                <!-- POSTER -->
+                <img
+                        class="mr-poster"
+                        loading="lazy"
+                        alt="Poster for <%= esc(title) %>"
+                        src="<%= ctx %>/movie-image?id=<%= esc(movieId) %>"
+                        onerror="this.onerror=null;this.src='<%= ctx %>/images/posters/default.svg';"
+                >
+                <div class="mr-card-content">
+                    <div class="mr-card-head">
+                        <div>
+                            <h3><%= esc(title) %></h3>
+                            <div class="mr-meta">
+                                <%= esc(genre) %>
+                                · Rental #<%= esc(rentalId) %>
+                            </div>
+                        </div>
+                        <span class="mr-badge <%= badge %>">
+                                <%= esc(rentalStatus) %>
+                            </span>
                     </div>
-
-
-                    <div class="rental-movie-meta">
-
-                        <%= HtmlUtil.escape(
-                                movieGenre
-                        ) %>
-
-                        <%
-                            if (movie != null) {
-                        %>
-
-                        •
-                        <%= movie.getReleaseYear() %>
-
-                        <%
-                            }
-                        %>
-
+                    <!-- RENTAL DETAILS -->
+                    <div class="mr-details">
+                        <div>
+                            <small>Rented On</small>
+                            <strong>
+                                <%= esc(date(rentedOn)) %>
+                            </strong>
+                        </div>
+                        <div>
+                            <small>
+                                <%= isReturned
+                                        ? "Returned On"
+                                        : "Due Date" %>
+                            </small>
+                            <strong>
+                                <%= esc(date(
+                                        isReturned
+                                                ? returnedOn
+                                                : dueOn
+                                )) %>
+                            </strong>
+                        </div>
+                        <div>
+                            <small>Movie ID</small>
+                            <strong>
+                                <%= esc(movieId) %>
+                            </strong>
+                        </div>
+                        <div>
+                            <small>Payment</small>
+                            <% if (payment != null) { %>
+                            <span class="mr-badge <%= payment.isPaid()
+                                        ? "paid"
+                                        : payment.isPending()
+                                            ? "pending"
+                                            : "" %>">
+                                        <%= esc(
+                                                payment.getPaymentStatus()
+                                        ) %>
+                                    </span>
+                            <% } else { %>
+                            <strong>
+                                Not linked / legacy rental
+                            </strong>
+                            <% } %>
+                        </div>
                     </div>
-
-
-                    <span class="rental-id">
-
-                        Rental:
-                        <%= HtmlUtil.escape(
-                                rental.getRentalId()
-                        ) %>
-
-                    </span>
-
-
-                </div>
-
-
-                <!-- =================================================
-                     RENTAL DATE
-                ================================================== -->
-
-                <div class="rental-date-column">
-
-
-                    <span class="rental-detail-label">
-
-                        Rental Date
-
-                    </span>
-
-
-                    <span class="rental-detail-value">
-
-                        <%= HtmlUtil.escape(
-                                rental.getRentalDate()
-                        ) %>
-
-                    </span>
-
-
-                </div>
-
-
-                <!-- =================================================
-                     RETURN DATE
-                ================================================== -->
-
-                <div class="return-date-column">
-
-
-                    <span class="rental-detail-label">
-
-                        Return Date
-
-                    </span>
-
-
-                    <span class="rental-detail-value">
-
-                        <%
-                            if (
-                                    rental.getReturnDate()
-                                            == null
-                                            ||
-                                            rental.getReturnDate()
-                                                    .trim()
-                                                    .isEmpty()
-                            ) {
-                        %>
-
-                        Not returned yet
-
-                        <%
-                        } else {
-                        %>
-
-                        <%= HtmlUtil.escape(
-                                rental.getReturnDate()
-                        ) %>
-
-                        <%
-                            }
-                        %>
-
-                    </span>
-
-
-                </div>
-
-
-                <!-- =================================================
-                     STATUS
-                ================================================== -->
-
-                <div class="rental-status-column">
-
-
-                    <span class="rental-detail-label">
-
-                        Status
-
-                    </span>
-
-
-                    <%
-                        if (active) {
-                    %>
-
-
-                    <span class="rental-status active">
-
-                        <span class="status-dot"></span>
-
-                        RENTED
-
-                    </span>
-
-
-                    <%
-                    } else {
-                    %>
-
-
-                    <span class="rental-status returned">
-
-                        <span class="status-dot"></span>
-
-                        RETURNED
-
-                    </span>
-
-
-                    <%
-                        }
-                    %>
-
-
-                </div>
-
-
-                <!-- =================================================
-                     ACTIONS
-                ================================================== -->
-
-                <div class="rental-actions">
-
-
-                    <%
-                        if (active) {
-                    %>
-
-
-                    <!-- RETURN MOVIE -->
-
-                    <form
-                            method="post"
-                            action="<%= ctx %>/rentals"
-
-                            onsubmit="
-                                return confirm(
-                                    'Are you sure you want to return this movie?'
-                                );
-                            "
-                    >
-
-
-                        <input
-                                type="hidden"
-                                name="action"
-                                value="return"
+                    <!-- ACTIONS -->
+                    <div class="mr-actions">
+                        <a
+                                class="mr-btn"
+                                href="<%= ctx %>/reviews?movieId=<%= esc(movieId) %>"
                         >
-
-
-                        <input
-                                type="hidden"
-                                name="rentalId"
-                                value="<%= HtmlUtil.escape(
-                                        rental.getRentalId()
-                                ) %>"
+                            ★ Reviews
+                        </a>
+                        <% if (payment != null) { %>
+                        <a
+                                class="mr-btn"
+                                href="<%= ctx %>/payments?paymentId=<%= esc(payment.getPaymentId()) %>"
                         >
-
-
-                        <button
-                                type="submit"
-                                class="rental-action-button return-button"
+                            Payment Details
+                        </a>
+                        <% } %>
+                        <% if (isActive && !rentalId.isEmpty()) { %>
+                        <form
+                                method="post"
+                                action="<%= ctx %>/rentals"
+                                onsubmit="return confirm('Return this movie?');"
                         >
-
-                            ↩ Return Movie
-
-                        </button>
-
-
-                    </form>
-
-
-                    <%
-                    } else if (returned) {
-                    %>
-
-
-                    <!-- REVIEW -->
-
-                    <a
-                            href="<%= ctx %>/reviews?movieId=<%= HtmlUtil.escape(
-                                    rental.getMovieId()
-                            ) %>"
-
-                            class="rental-action-button review-button"
-                    >
-
-                        ⭐ Review Movie
-
-                    </a>
-
-
-                    <span
-                            class="rental-action-button completed-button"
-                    >
-
-                        ✓ Completed
-
-                    </span>
-
-
-                    <%
-                        }
-                    %>
-
-
+                            <input
+                                    type="hidden"
+                                    name="action"
+                                    value="return"
+                            >
+                            <input
+                                    type="hidden"
+                                    name="rentalId"
+                                    value="<%= esc(rentalId) %>"
+                            >
+                            <input
+                                    type="hidden"
+                                    name="csrfToken"
+                                    value="<%= esc(csrf) %>"
+                            >
+                            <button
+                                    class="mr-btn mr-danger"
+                                    type="submit"
+                            >
+                                Return Movie
+                            </button>
+                        </form>
+                        <% } %>
+                    </div>
                 </div>
-
-
             </article>
-
-
+            <% } %>
+        </div>
+        <div
+                class="mr-empty"
+                id="noMatches"
+                style="display:none;margin-top:16px"
+        >
+            <h3>No matching rentals</h3>
+            <p>
+                Try a different search or status filter.
+            </p>
+        </div>
+        <% } %>
+    </section>
+    <!-- PAYMENTS -->
+    <section class="mr-section">
+        <h2>Checkout &amp; Payment Activity</h2>
+        <p class="mr-sub">
+            Pending, rejected or paid payments not yet
+            linked to a rental.
+        </p>
+        <% if (!paymentsLoaded) { %>
+        <div class="mr-alert">
+            Payment information has not been loaded
+            by RentalServlet yet.
+        </div>
+        <% } else if (unlinkedPayments.isEmpty()) { %>
+        <div class="mr-empty">
+            <h3>No outstanding payments</h3>
+            <p>
+                Payments awaiting approval or rental
+                activation will appear here.
+            </p>
+        </div>
+        <% } else { %>
+        <div class="mr-payment-grid">
             <%
-                }
+                for (Payment p : unlinkedPayments) {
+                    Movie m =
+                            moviesById.get(p.getMovieId());
+                    String title = m == null
+                            ? "Movie " + p.getMovieId()
+                            : m.getTitle();
+                    String badge = p.isPaid()
+                            ? "paid"
+                            : p.isPending()
+                            ? "pending"
+                            : p.isRejected()
+                            ? "rejected"
+                            : p.isFailed()
+                            ? "failed"
+                            : "";
             %>
-
-
-        </section>
-
-
-        <%
-            }
-        %>
-
-
-        <!-- =====================================================
-             INFO
-        ====================================================== -->
-
-        <div class="rental-info-banner">
-
-
-            <div class="rental-info-icon">
-
-                💡
-
-            </div>
-
-
-            <div>
-
-                After returning a movie,
-                it will automatically appear in
-                <strong>Recently Watched</strong>
-                and you will be able to leave a
-                rating and review.
-
-            </div>
-
-
+            <article class="mr-payment">
+                <div class="mr-payment-top">
+                        <span class="mr-meta">
+                            Payment #<%= esc(p.getPaymentId()) %>
+                        </span>
+                    <span class="mr-badge <%= badge %>">
+                            <%= esc(p.getPaymentStatus()) %>
+                        </span>
+                </div>
+                <h3><%= esc(title) %></h3>
+                <p>
+                    <%= esc(
+                            p.getPaymentMethodDisplay()
+                    ) %>
+                    ·
+                    <%= esc(
+                            p.getFormattedCreatedAt()
+                    ) %>
+                </p>
+                <% if (p.isPending()) { %>
+                <p>
+                    Waiting for admin verification.
+                    Rental is not active.
+                </p>
+                <% } else if (p.isPaid()) { %>
+                <p>
+                    Payment approved.
+                    Rental activation is awaiting
+                    backend processing.
+                </p>
+                <% } %>
+                <div class="mr-payment-bottom">
+                    <strong>
+                        LKR <%= esc(
+                            p.getFormattedAmount()
+                    ) %>
+                    </strong>
+                    <a
+                            class="mr-btn"
+                            href="<%= ctx %>/payments?paymentId=<%= esc(p.getPaymentId()) %>"
+                    >
+                        View Payment
+                    </a>
+                </div>
+            </article>
+            <% } %>
         </div>
-
-
-    </div>
-
-
+        <% } %>
+    </section>
 </main>
-
-
-<!-- =========================================================
-     FOOTER
-========================================================= -->
-
-<footer class="rentals-footer">
-
-
-    <div class="rentals-footer-inner">
-
-
-        <div>
-
-            © 2026 CineRent
-
-        </div>
-
-
-        <div>
-
-            Browse • Rent • Watch • Review
-
-        </div>
-
-
-    </div>
-
-
-</footer>
-
-
-<script
-        src="<%= ctx %>/js/app.js"
-        defer
-></script>
-
-
+<!-- SEARCH AND FILTER -->
+<script>
+    (function () {
+        const search =
+            document.getElementById('rentalSearch');
+        const filter =
+            document.getElementById('rentalFilter');
+        const cards = Array.from(
+            document.querySelectorAll('[data-rental]')
+        );
+        const count =
+            document.getElementById('visibleCount');
+        const empty =
+            document.getElementById('noMatches');
+        if (!search || !filter) return;
+        function update() {
+            const query =
+                search.value.trim().toLowerCase();
+            let visible = 0;
+            cards.forEach(function (card) {
+                const matchText =
+                    (card.dataset.search || '')
+                        .toLowerCase()
+                        .includes(query);
+                const matchStatus =
+                    filter.value === 'ALL'
+                    || card.dataset.status === filter.value;
+                const show = matchText && matchStatus;
+                card.style.display =
+                    show ? '' : 'none';
+                if (show) visible++;
+            });
+            if (count)
+                count.textContent = String(visible);
+            if (empty)
+                empty.style.display =
+                    cards.length && !visible
+                        ? 'block'
+                        : 'none';
+        }
+        search.addEventListener('input', update);
+        filter.addEventListener('change', update);
+    })();
+</script>
 </body>
-
 </html>
