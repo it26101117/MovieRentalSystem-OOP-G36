@@ -21,73 +21,104 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
+import java.util.Collections;
 
 /**
- * CineRent Customer Payment Servlet
+ * CineRent customer payments.
  *
- * GET /payments
- *     Displays the customer's payment history.
+ * GET  /payments                 - Customer payment history
+ * GET  /payments?paymentId=P0001 - Payment details / receipt
+ * POST /payments                 - Create a checkout payment
  *
- * GET /payments?paymentId=P0001
- *     Displays details of one payment.
+ * Temporary local debugging:
+ * GET /payments?debug=1 - Test servlet and customer session
+ * GET /payments?debug=2 - Test PaymentService and JSP paths
+ * GET /payments?debug=3 - Test JSP without PaymentService
  *
- * POST /payments
- *     Processes a checkout request.
- *
- * DEMO_CARD:
- *     Simulated payment, marked PAID.
- *
- * BANK_TRANSFER:
- *     Remains PENDING until administrator approval.
- *
- * Rental activation must be integrated separately
- * with the project's actual RentalService API.
+ * Requires @ServletComponentScan in MovieRentalApplication.
+ * DEMO_CARD is a simulation; BANK_TRANSFER needs admin approval.
+ * Payment confirmation alone does not create or activate a rental.
  */
-@WebServlet(name = "PaymentServlet", urlPatterns = "/payments")
+@WebServlet(
+        name = "PaymentServlet",
+        urlPatterns = "/payments",
+        loadOnStartup = 1
+)
 public class PaymentServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
     private static final Object PAYMENT_LOCK = new Object();
 
+    private static final String HISTORY_JSP =
+            "/WEB-INF/views/my-payments.jsp";
+
+    private static final String SUCCESS_JSP =
+            "/WEB-INF/views/payment-success.jsp";
+
     private PaymentService paymentService;
     private MovieService movieService;
     private RentalService rentalService;
 
-
+    // ==========================================================
     // INITIALIZE SERVICES
-
+    // ==========================================================
 
     @Override
     public void init() throws ServletException {
 
         try {
+            paymentService = new PaymentService(
+                    DataPathUtil.getFilePath("payments.txt")
+            );
 
-            paymentService = new PaymentService(DataPathUtil.getFilePath("payments.txt"));
+            movieService = new MovieService(
+                    DataPathUtil.getFilePath("movies.txt")
+            );
 
-            movieService = new MovieService(DataPathUtil.getFilePath("movies.txt"));
+            rentalService = new RentalService(
+                    DataPathUtil.getFilePath("rentals.txt")
+            );
 
-            rentalService = new RentalService(DataPathUtil.getFilePath("rentals.txt"));
+            logInfo(
+                    "PaymentServlet initialized; mapping: /payments"
+            );
 
         } catch (Exception ex) {
 
-            throw new ServletException("Could not initialize payment services", ex);
+            getServletContext().log(
+                    "[CineRent] PaymentServlet initialization failed",
+                    ex
+            );
+
+            throw new ServletException(
+                    "Could not initialize CineRent payment services",
+                    ex
+            );
         }
     }
 
-
-    // GET: PAYMENT HISTORY AND PAYMENT DETAILS
-
+    // ==========================================================
+    // GET: PAYMENT HISTORY / DETAILS / DEBUGGING
+    // ==========================================================
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws ServletException, IOException {
+
+        logInfo(
+                "GET reached: " + request.getRequestURI()
+        );
 
         HttpSession session = request.getSession(false);
 
         String ctx = request.getContextPath();
 
-
-        // 1. SESSION CHECK
+        // ------------------------------------------------------
+        // SESSION VALIDATION
+        // ------------------------------------------------------
 
         if (session == null) {
 
@@ -95,20 +126,22 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
-        String role = asString(session.getAttribute("role"));
+        String role = asString(
+                session.getAttribute("role")
+        );
 
-
-        // 2. ADMINISTRATOR REDIRECT
-
+        String userId = asString(
+                session.getAttribute("userId")
+        );
 
         if ("ADMIN".equalsIgnoreCase(role)) {
 
-            response.sendRedirect(ctx + "/admin/payments");
+            response.sendRedirect(
+                    ctx + "/admin/payments"
+            );
 
             return;
         }
-
-        String userId = asString(session.getAttribute("userId"));
 
         if (userId.isEmpty()) {
 
@@ -116,302 +149,641 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
-
-        // 3. CUSTOMER ACCESS CHECK
-
         if (!"CUSTOMER".equalsIgnoreCase(role)) {
 
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Customer access required.");
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Only customers can view customer payments."
+            );
+
             return;
         }
 
+        // ======================================================
+        // DEBUG MODE
+        // Temporary: localhost + authenticated customer only
+        // ======================================================
+
+        String debug = trim(
+                request.getParameter("debug")
+        );
+
+        boolean localDebug =
+                isLocalRequest(request) && !debug.isEmpty();
+
+        // ------------------------------------------------------
+        // DEBUG 1: CHECK SERVLET AND SESSION
+        // ------------------------------------------------------
+
+        if (localDebug && "1".equals(debug)) {
+
+            response.setContentType(
+                    "text/plain;charset=UTF-8"
+            );
+
+            response.getWriter().println(
+                    "SUCCESS: PaymentServlet GET is working."
+            );
+
+            response.getWriter().println(
+                    "Stage: session and customer role verified."
+            );
+
+            return;
+        }
+
+        // ------------------------------------------------------
+        // DEBUG 3: TEST JSP WITHOUT PAYMENT SERVICE
+        // ------------------------------------------------------
+
+        if (localDebug && "3".equals(debug)) {
+
+            request.setAttribute(
+                    "payments",
+                    Collections.<Payment>emptyList()
+            );
+
+            request.setAttribute(
+                    "userName",
+                    session.getAttribute("userName")
+            );
+
+            logInfo(
+                    "DEBUG 3: forwarding to payment JSP with empty records"
+            );
+
+            forwardToJsp(
+                    request,
+                    response,
+                    HISTORY_JSP
+            );
+
+            return;
+        }
+
+        // ======================================================
+        // LOAD PAYMENT HISTORY
+        // ======================================================
+
         try {
 
+            logInfo(
+                    "GET stage: loading payments for authenticated customer"
+            );
 
-            // 4. LOAD CUSTOMER PAYMENT HISTORY
+            List<Payment> payments =
+                    paymentService.getPaymentsByUser(userId);
 
+            logInfo(
+                    "GET stage: payment records loaded"
+            );
 
-            List<Payment> payments = paymentService.getPaymentsByUser(userId);
+            // --------------------------------------------------
+            // DEBUG 2: CHECK PAYMENT SERVICE AND JSP FILES
+            // --------------------------------------------------
 
-            request.setAttribute("payments", payments);
+            if (localDebug && "2".equals(debug)) {
 
-            request.setAttribute("userName", session.getAttribute("userName"));
+                response.setContentType(
+                        "text/plain;charset=UTF-8"
+                );
 
-            String paymentId = trim(request.getParameter("paymentId"));
+                response.getWriter().println(
+                        "SUCCESS: PaymentService loaded payment records."
+                );
 
-            // 5. PAYMENT HISTORY PAGE
+                response.getWriter().println(
+                        "Records: " +
+                                (payments == null ? 0 : payments.size())
+                );
 
-            // /payments
+                response.getWriter().println(
+                        "Payment JSP exists: " +
+                                (getServletContext().getResource(
+                                        HISTORY_JSP
+                                ) != null)
+                );
 
-            // This fixes the HTTP 400 error.
+                response.getWriter().println(
+                        "Success JSP exists: " +
+                                (getServletContext().getResource(
+                                        SUCCESS_JSP
+                                ) != null)
+                );
 
+                return;
+            }
+
+            // --------------------------------------------------
+            // SET PAYMENT HISTORY ATTRIBUTES
+            // --------------------------------------------------
+
+            request.setAttribute(
+                    "payments",
+                    payments
+            );
+
+            request.setAttribute(
+                    "userName",
+                    session.getAttribute("userName")
+            );
+
+            String paymentId = trim(
+                    request.getParameter("paymentId")
+            );
+
+            // --------------------------------------------------
+            // PAYMENT HISTORY PAGE
+            // --------------------------------------------------
 
             if (paymentId.isEmpty()) {
 
-                request.getRequestDispatcher("/WEB-INF/views/my-payment.jsp").forward(request, response);
+                logInfo(
+                        "GET stage: opening payment history"
+                );
+
+                forwardToJsp(
+                        request,
+                        response,
+                        HISTORY_JSP
+                );
 
                 return;
             }
 
+            // --------------------------------------------------
+            // LOAD SELECTED PAYMENT
+            // --------------------------------------------------
 
-            // 6. LOAD SELECTED PAYMENT
+            logInfo(
+                    "GET stage: loading selected payment"
+            );
 
-            // /payments?paymentId=P0001
+            Payment payment =
+                    paymentService.getPaymentById(paymentId);
 
+            if (payment == null ||
+                    !userId.equals(payment.getUserId())) {
 
-            Payment payment = paymentService.getPaymentById(paymentId);
-
-
-            // 7. VERIFY PAYMENT OWNERSHIP
-
-
-            if (payment == null || !userId.equals(payment.getUserId())) {
-
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Payment not found.");
+                response.sendError(
+                        HttpServletResponse.SC_NOT_FOUND,
+                        "Payment not found or does not belong to this customer."
+                );
 
                 return;
             }
 
-            // 8. LOAD RELATED MOVIE
+            Movie movie =
+                    movieService.getMovieById(
+                            payment.getMovieId()
+                    );
 
-            Movie movie = movieService.getMovieById(payment.getMovieId());
+            request.setAttribute(
+                    "payment",
+                    payment
+            );
 
+            request.setAttribute(
+                    "movie",
+                    movie
+            );
 
-            // 9. SET JSP ATTRIBUTES
+            request.setAttribute(
+                    "paymentId",
+                    payment.getPaymentId()
+            );
 
-            request.setAttribute("payment", payment);
+            request.setAttribute(
+                    "paymentStatus",
+                    payment.getPaymentStatus()
+            );
 
-            request.setAttribute("movie", movie);
+            request.setAttribute(
+                    "paymentMethod",
+                    payment.getPaymentMethod()
+            );
 
-            request.setAttribute("paymentId", payment.getPaymentId());
+            request.setAttribute(
+                    "isPaid",
+                    payment.isPaid()
+            );
 
-            request.setAttribute("paymentStatus", payment.getPaymentStatus());
+            request.setAttribute(
+                    "isPending",
+                    payment.isPending()
+            );
 
-            request.setAttribute("paymentMethod", payment.getPaymentMethod());
+            request.setAttribute(
+                    "rentalReady",
+                    payment.isPaid() && payment.hasRental()
+            );
 
-            request.setAttribute("isPaid", payment.isPaid());
+            request.setAttribute(
+                    "paymentMessage",
+                    messageFor(payment)
+            );
 
-            request.setAttribute("isPending", payment.isPending());
-
-            request.setAttribute("rentalReady", payment.isPaid() && payment.hasRental());
-
-            request.setAttribute("paymentMessage", messageFor(payment));
-
-            // 10. FORWARD BASED ON PAYMENT STATUS
+            // --------------------------------------------------
+            // REDIRECT TO CORRECT JSP
+            // --------------------------------------------------
 
             if (payment.isPaid()) {
 
-                request.getRequestDispatcher("/WEB-INF/views/payment-success.jsp").forward(request, response);
+                logInfo(
+                        "GET stage: opening payment success JSP"
+                );
+
+                forwardToJsp(
+                        request,
+                        response,
+                        SUCCESS_JSP
+                );
 
             } else {
 
-                request.getRequestDispatcher("/WEB-INF/views/my-payment.jsp").forward(request, response);
+                logInfo(
+                        "GET stage: opening pending payment JSP"
+                );
+
+                forwardToJsp(
+                        request,
+                        response,
+                        HISTORY_JSP
+                );
             }
 
         } catch (ServletException | IOException ex) {
+
+            getServletContext().log(
+                    "[CineRent] JSP forwarding or rendering failed",
+                    ex
+            );
 
             throw ex;
 
         } catch (Exception ex) {
 
-            getServletContext().log("Unable to display customer payments", ex);
+            getServletContext().log(
+                    "[CineRent] Could not load customer payment page",
+                    ex
+            );
 
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Payment records could not be loaded.");
+            if (!response.isCommitted()) {
+
+                response.sendError(
+                        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Unable to load payment records. Check the server console."
+                );
+            }
         }
     }
 
-    // POST: PROCESS CHECKOUT PAYMENT
-
+    // ==========================================================
+    // POST: PROCESS PAYMENT
+    // ==========================================================
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws ServletException, IOException {
 
-        HttpSession session = request.getSession(false);
+        logInfo(
+                "POST reached: " + request.getRequestURI()
+        );
+
+        HttpSession session =
+                request.getSession(false);
 
         String ctx = request.getContextPath();
 
+        // ------------------------------------------------------
+        // VALIDATE CUSTOMER SESSION
+        // ------------------------------------------------------
 
-        // 1. LOGIN CHECK
-
-
-        if (session == null || session.getAttribute("userId") == null) {
+        if (session == null) {
 
             response.sendRedirect(ctx + "/login");
             return;
         }
 
+        String userId = asString(
+                session.getAttribute("userId")
+        );
 
-        // 2. CUSTOMER ROLE CHECK
+        String role = asString(
+                session.getAttribute("role")
+        );
 
+        if (userId.isEmpty()) {
 
-        String role = asString(session.getAttribute("role"));
+            response.sendRedirect(ctx + "/login");
+            return;
+        }
 
         if (!"CUSTOMER".equalsIgnoreCase(role)) {
 
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Customer access required.");
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Only customers can make checkout payments."
+            );
 
             return;
         }
 
-        String userId = asString(session.getAttribute("userId"));
+        String movieId = trim(
+                request.getParameter("movieId")
+        );
 
-        String movieId = trim(request.getParameter("movieId"));
+        String paymentMethod = trim(
+                request.getParameter("paymentMethod")
+        );
 
-        String method = trim(request.getParameter("paymentMethod"));
+        // ------------------------------------------------------
+        // VALIDATE CSRF TOKEN
+        // ------------------------------------------------------
 
+        String expectedToken = asString(
+                session.getAttribute("checkoutCsrfToken")
+        );
 
-        // 3. CSRF VALIDATION
+        String submittedToken = trim(
+                request.getParameter("csrfToken")
+        );
 
+        if (
+                expectedToken.isEmpty()
+                        || submittedToken.isEmpty()
+                        || !MessageDigest.isEqual(
+                        expectedToken.getBytes(StandardCharsets.UTF_8),
+                        submittedToken.getBytes(StandardCharsets.UTF_8)
+                )
+        ) {
 
-        String expectedToken = asString(session.getAttribute("checkoutCsrfToken"));
-
-        String submittedToken = trim(request.getParameter("csrfToken"));
-
-        if (expectedToken.isEmpty() || submittedToken.isEmpty() || !MessageDigest.isEqual(expectedToken.getBytes(StandardCharsets.UTF_8), submittedToken.getBytes(StandardCharsets.UTF_8))) {
-
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid or expired checkout token. Reload checkout.");
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Invalid checkout token. Return to checkout and try again."
+            );
 
             return;
         }
 
-
-        // 4. MOVIE VALIDATION
-
+        // ------------------------------------------------------
+        // VALIDATE MOVIE
+        // ------------------------------------------------------
 
         if (movieId.isEmpty()) {
 
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "A movie must be selected.");
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Please select a movie."
+            );
 
             return;
         }
 
-        // 5. PAYMENT METHOD VALIDATION
+        // ------------------------------------------------------
+        // VALIDATE PAYMENT METHOD
+        // ------------------------------------------------------
 
+        if (
+                !PaymentService.DEMO_CARD.equals(paymentMethod)
+                        && !PaymentService.BANK_TRANSFER.equals(paymentMethod)
+        ) {
 
-        if (!PaymentService.DEMO_CARD.equals(method) && !PaymentService.BANK_TRANSFER.equals(method)) {
-
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unsupported payment method.");
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Unsupported payment method."
+            );
 
             return;
         }
+
+        // ======================================================
+        // CREATE PAYMENT
+        // ======================================================
 
         try {
 
             Payment payment;
 
-
-            // 6. PREVENT DUPLICATE SUBMISSIONS
-
             synchronized (PAYMENT_LOCK) {
 
-                Movie movie = movieService.getMovieById(movieId);
+                logInfo(
+                        "POST stage: loading selected movie"
+                );
+
+                Movie movie =
+                        movieService.getMovieById(movieId);
 
                 if (movie == null) {
 
-                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Movie not found.");
+                    response.sendError(
+                            HttpServletResponse.SC_NOT_FOUND,
+                            "Movie not found."
+                    );
 
                     return;
                 }
 
+                // --------------------------------------------------
+                // CHECK EXISTING RENTAL
+                // --------------------------------------------------
 
-                // 7. CHECK EXISTING ACTIVE RENTAL
+                if (
+                        rentalService.hasActiveRental(
+                                userId,
+                                movieId
+                        )
+                ) {
 
+                    response.sendRedirect(
+                            ctx + "/rentals?error=alreadyactive"
+                    );
 
-                if (rentalService.hasActiveRental(
+                    return;
+                }
+
+                // --------------------------------------------------
+                // CHECK EXISTING PAYMENT
+                // --------------------------------------------------
+
+                logInfo(
+                        "POST stage: checking outstanding payments"
+                );
+
+                payment = findOutstandingPayment(
                         userId,
                         movieId
-                )) {
-
-                    response.sendRedirect(ctx + "/rentals?error=alreadyactive");
-
-                    return;
-                }
-
-
-                // 8. REUSE OUTSTANDING PAYMENT
-
-
-                payment = findOutstandingPayment(userId, movieId);
+                );
 
                 if (payment == null) {
 
-
-                    // 9. CHECK AVAILABLE COPIES
-
+                    // ----------------------------------------------
+                    // CHECK AVAILABLE COPIES
+                    // ----------------------------------------------
 
                     if (movie.getAvailableCopies() <= 0) {
 
-                        response.sendRedirect(ctx + "/catalog?error=unavailable");
+                        response.sendRedirect(
+                                ctx + "/catalog?error=unavailable"
+                        );
 
                         return;
                     }
 
+                    double rentalPrice =
+                            movie.getRentalPrice();
 
-                    // 10. VALIDATE RENTAL PRICE
+                    if (
+                            !Double.isFinite(rentalPrice)
+                                    || rentalPrice <= 0
+                    ) {
 
-
-                    double price = movie.getRentalPrice();
-
-                    if (!Double.isFinite(price) || price <= 0) {
-
-                        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "This movie does not have a valid rental price.");
+                        response.sendError(
+                                HttpServletResponse.SC_BAD_REQUEST,
+                                "The selected movie has an invalid rental price."
+                        );
 
                         return;
                     }
 
-                    BigDecimal amount = BigDecimal.valueOf(price);
+                    // ----------------------------------------------
+                    // CREATE PENDING PAYMENT
+                    // ----------------------------------------------
 
-
-                    // 11. CREATE PAYMENT
+                    logInfo(
+                            "POST stage: creating pending payment"
+                    );
 
                     payment =
-                            paymentService.createPendingPayment(userId, movieId, amount, method);
+                            paymentService.createPendingPayment(
+                                    userId,
+                                    movieId,
+                                    BigDecimal.valueOf(rentalPrice),
+                                    paymentMethod
+                            );
+                }
 
+                // --------------------------------------------------
+                // SIMULATE DEMO CARD PAYMENT
+                // --------------------------------------------------
 
-                    // 12. DEMO CARD PAYMENT
+                if (
+                        PaymentService.DEMO_CARD.equals(
+                                payment.getPaymentMethod()
+                        )
+                                && payment.isPending()
+                ) {
 
+                    logInfo(
+                            "POST stage: confirming demo payment"
+                    );
 
-                    if (PaymentService.DEMO_CARD.equals(method)) {
-
-                        payment = paymentService.markPaymentPaid(payment.getPaymentId());
-                    }
-
-                    // BANK_TRANSFER remains PENDING.
-                    // Admin approval is handled separately.
+                    payment =
+                            paymentService.markPaymentPaid(
+                                    payment.getPaymentId()
+                            );
                 }
             }
 
             if (payment == null) {
 
-                throw new IllegalStateException("Payment was not created");
+                throw new IllegalStateException(
+                        "Payment could not be created."
+                );
             }
 
-            // 13. REMOVE USED CHECKOUT TOKEN
+            session.removeAttribute(
+                    "checkoutCsrfToken"
+            );
 
+            String encodedPaymentId =
+                    URLEncoder.encode(
+                            payment.getPaymentId(),
+                            StandardCharsets.UTF_8
+                    );
 
-            session.removeAttribute("checkoutCsrfToken");
+            logInfo(
+                    "POST stage: redirecting to payment details"
+            );
 
-
-            // 14. REDIRECT TO PAYMENT DETAILS
-
-
-            String encodedId = URLEncoder.encode(payment.getPaymentId(), StandardCharsets.UTF_8);
-
-            response.sendRedirect(ctx + "/payments?paymentId=" + encodedId);
+            response.sendRedirect(
+                    ctx + "/payments?paymentId=" +
+                            encodedPaymentId
+            );
 
         } catch (Exception ex) {
 
-            getServletContext().log("Unable to process customer payment", ex);
+            getServletContext().log(
+                    "[CineRent] Could not process customer payment",
+                    ex
+            );
 
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Payment could not be processed. Please try again.");
+            if (!response.isCommitted()) {
+
+                response.sendError(
+                        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Payment processing failed. Check the server console."
+                );
+            }
         }
     }
 
+    // ==========================================================
+    // JSP FORWARDING
+    // ==========================================================
 
-    // FIND EXISTING PENDING OR PAID-UNLINKED PAYMENT
+    private void forwardToJsp(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String jspPath
+    ) throws ServletException, IOException {
 
+        logInfo(
+                "Checking JSP: " + jspPath
+        );
 
-    private Payment findOutstandingPayment(String userId, String movieId) {
+        if (
+                getServletContext().getResource(
+                        jspPath
+                ) == null
+        ) {
+
+            getServletContext().log(
+                    "[CineRent] MISSING JSP FILE: " +
+                            jspPath
+            );
+
+            response.sendError(
+                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Missing JSP: " + jspPath +
+                            ". Create the file under src/main/webapp."
+            );
+
+            return;
+        }
+
+        logInfo(
+                "Forwarding to JSP: " + jspPath
+        );
+
+        request.getRequestDispatcher(
+                jspPath
+        ).forward(
+                request,
+                response
+        );
+    }
+
+    // ==========================================================
+    // FIND OUTSTANDING PAYMENT
+    // ==========================================================
+
+    private Payment findOutstandingPayment(
+            String userId,
+            String movieId
+    ) {
 
         List<Payment> payments =
                 paymentService.getPaymentsByUser(userId);
@@ -424,17 +796,24 @@ public class PaymentServlet extends HttpServlet {
 
         for (Payment payment : payments) {
 
-            if (payment == null
-                    || !movieId.equals(payment.getMovieId())) {
+            if (
+                    payment == null
+                            || !movieId.equals(payment.getMovieId())
+            ) {
                 continue;
             }
 
-            // Prefer a paid record awaiting rental linking.
-            if (payment.isPaid() && !payment.hasRental()) {
+            if (
+                    payment.isPaid()
+                            && !payment.hasRental()
+            ) {
                 return payment;
             }
 
-            if (payment.isPending() && pending == null) {
+            if (
+                    payment.isPending()
+                            && pending == null
+            ) {
                 pending = payment;
             }
         }
@@ -442,52 +821,89 @@ public class PaymentServlet extends HttpServlet {
         return pending;
     }
 
-
+    // ==========================================================
     // PAYMENT STATUS MESSAGE
+    // ==========================================================
 
-
-    private static String messageFor(Payment payment) {
+    private static String messageFor(
+            Payment payment
+    ) {
 
         if (payment.isPaid()) {
 
-            if (payment.hasRental()) {
-
-                return "Payment confirmed and rental linked successfully.";
-            }
-
-            return "Payment recorded. Rental activation is awaiting backend processing.";
+            return payment.hasRental()
+                    ? "Payment confirmed and rental linked successfully."
+                    : "Payment confirmed. Rental activation is awaiting backend processing.";
         }
 
         if (payment.isPending()) {
 
-            return "Bank transfer pending. An administrator must verify payment before rental activation.";
+            return "Bank transfer is pending administrator verification.";
         }
 
         if (payment.isRejected()) {
 
-            return "This payment was rejected. Please contact the administrator.";
+            return "Payment rejected. Please contact the administrator.";
         }
 
         if (payment.isFailed()) {
 
-            return "This payment failed. Please return to the catalogue and try again.";
+            return "Payment failed. Return to the catalogue and try again.";
         }
 
-        return "Payment status: "
-                + payment.getPaymentStatus();
+        return "Payment status: " +
+                payment.getPaymentStatus();
     }
 
+    // ==========================================================
+    // LOGGING
+    // ==========================================================
 
-    // HELPER METHODS
+    private void logInfo(String message) {
 
+        String line =
+                "[CineRent] " + message;
 
-    private static String asString(Object value) {
+        System.out.println(line);
 
-        return value == null ? "" : String.valueOf(value).trim();
+        getServletContext().log(line);
     }
 
-    private static String trim(String value) {
+    // ==========================================================
+    // LOCAL DEBUGGING SECURITY CHECK
+    // ==========================================================
 
-        return value == null ? "" : value.trim();
+    private static boolean isLocalRequest(
+            HttpServletRequest request
+    ) {
+
+        String address =
+                request.getRemoteAddr();
+
+        return "127.0.0.1".equals(address)
+                || "::1".equals(address)
+                || "0:0:0:0:0:0:0:1".equals(address);
+    }
+
+    // ==========================================================
+    // STRING HELPERS
+    // ==========================================================
+
+    private static String asString(
+            Object value
+    ) {
+
+        return value == null
+                ? ""
+                : String.valueOf(value).trim();
+    }
+
+    private static String trim(
+            String value
+    ) {
+
+        return value == null
+                ? ""
+                : value.trim();
     }
 }
