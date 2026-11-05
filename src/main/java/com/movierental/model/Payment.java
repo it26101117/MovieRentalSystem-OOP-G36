@@ -684,44 +684,22 @@ public class PaymentService {
 
         try {
 
-            temporaryFile = Files.createTempFile(
-                    paymentFilePath.getParent(),
-                    "payments-",
-                    ".tmp"
-            );
+            temporaryFile = Files.createTempFile(paymentFilePath.getParent(), "payments-", ".tmp");
 
-            Files.write(
-                    temporaryFile,
-                    lines,
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-            );
+            Files.write(temporaryFile, lines, StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 
             try {
 
-                Files.move(
-                        temporaryFile,
-                        paymentFilePath,
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE
-                );
+                Files.move(temporaryFile, paymentFilePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 
             } catch (AtomicMoveNotSupportedException e) {
 
-                Files.move(
-                        temporaryFile,
-                        paymentFilePath,
-                        StandardCopyOption.REPLACE_EXISTING
-                );
+                Files.move(temporaryFile, paymentFilePath, StandardCopyOption.REPLACE_EXISTING);
             }
 
         } catch (IOException e) {
 
-            throw new IllegalStateException(
-                    "Unable to save payment records.",
-                    e
-            );
+            throw new IllegalStateException("Unable to save payment records.", e);
 
         } finally {
 
