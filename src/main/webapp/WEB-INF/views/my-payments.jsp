@@ -1,1653 +1,1203 @@
 
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="java.util.List" %>
-<%@ page import="java.util.Collections" %>
-<%@ page import="java.util.Locale" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" language="java" %>
+<%@ page import="java.util.ArrayList,java.util.Comparator,java.util.List,java.util.Locale" %>
 <%@ page import="java.math.BigDecimal" %>
+<%@ page import="java.net.URLEncoder" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
 <%@ page import="com.movierental.model.Payment" %>
 <%@ page import="com.movierental.model.Movie" %>
 <%@ page import="com.movierental.util.HtmlUtil" %>
 
+<%!
+    private String safe(Object value) {
+        return HtmlUtil.escape(value == null ? "" : String.valueOf(value));
+    }
+
+    private String badgeClass(Payment payment) {
+        if (payment == null) return "other";
+        if (payment.isPaid()) return "paid";
+        if (payment.isPending()) return "pending";
+        return "other";
+    }
+
+    private String badgeText(Payment payment) {
+        if (payment == null) return "Unknown";
+        if (payment.isPaid()) return "Paid";
+        if (payment.isPending()) return "Pending";
+        String status = payment.getPaymentStatus();
+        return status == null || status.isBlank() ? "Unknown" : status;
+    }
+%>
 <%
-    // ==========================================
-    // DATA FROM PAYMENT SERVLET
-    // ==========================================
+    // Data provided by PaymentServlet.doGet()
+    String context = request.getContextPath();
 
-    Payment selectedPayment =
-            (Payment) request.getAttribute("payment");
-
-    Movie selectedMovie =
-            (Movie) request.getAttribute("movie");
-
-    List<Payment> payments =
-            (List<Payment>) request.getAttribute("payments");
-
-    String userName =
-            (String) request.getAttribute("userName");
-
-    String paymentMessage =
-            (String) request.getAttribute("paymentMessage");
-
-    String ctx = request.getContextPath();
-
-    // ==========================================
-    // DEFAULT VALUES
-    // ==========================================
-
-    if (userName == null || userName.isBlank()) {
-
-        Object sessionName =
-                session.getAttribute("userName");
-
-        userName = sessionName == null
-                ? "Customer"
-                : sessionName.toString();
+    Object nameValue = request.getAttribute("userName");
+    if (nameValue == null) {
+        nameValue = session.getAttribute("userName");
     }
 
-    // If only one payment was supplied by the
-    // servlet, display that payment in the table.
+    String userName = nameValue == null || String.valueOf(nameValue).isBlank()
+            ? "Customer" : String.valueOf(nameValue).trim();
 
-    if (payments == null) {
+    String initial = userName.substring(0, 1).toUpperCase(Locale.ROOT);
 
-        payments = selectedPayment == null
-                ? Collections.emptyList()
-                : Collections.singletonList(selectedPayment);
-    }
+    Payment selectedPayment = (Payment) request.getAttribute("payment");
+    Movie selectedMovie = (Movie) request.getAttribute("movie");
 
-    // ==========================================
-    // PAYMENT STATISTICS
-    // ==========================================
+    Object messageValue = request.getAttribute("paymentMessage");
+    String paymentMessage = messageValue == null
+            ? "" : String.valueOf(messageValue);
 
-    int totalPayments = 0;
-    int paidPayments = 0;
-    int pendingPayments = 0;
-    int failedPayments = 0;
+    List<Payment> payments = new ArrayList<>();
+    Object suppliedPayments = request.getAttribute("payments");
 
-    BigDecimal totalPaidAmount =
-            BigDecimal.ZERO;
-
-    for (Payment payment : payments) {
-
-        if (payment == null) {
-            continue;
-        }
-
-        totalPayments++;
-
-        if (payment.isPaid()) {
-
-            paidPayments++;
-
-            if (payment.getAmount() != null) {
-
-                totalPaidAmount =
-                        totalPaidAmount.add(
-                                payment.getAmount()
-                        );
+    if (suppliedPayments instanceof List<?>) {
+        for (Object entry : (List<?>) suppliedPayments) {
+            if (entry instanceof Payment) {
+                payments.add((Payment) entry);
             }
-
-        } else if (payment.isPending()) {
-
-            pendingPayments++;
-
-        } else if (
-                payment.isFailed()
-                        || payment.isRejected()
-        ) {
-
-            failedPayments++;
         }
     }
 
-    String formattedTotalPaid =
-            String.format(
-                    Locale.US,
-                    "LKR %,.2f",
-                    totalPaidAmount
-            );
+    if (payments.isEmpty() && selectedPayment != null) {
+        payments.add(selectedPayment);
+    }
 
-    // ==========================================
-    // SELECTED PAYMENT STATUS
-    // ==========================================
+    payments.sort(Comparator.comparing(
+            Payment::getCreatedAt,
+            Comparator.nullsLast(Comparator.reverseOrder())
+    ));
 
-    String selectedStatusClass = "status-unknown";
-    String selectedStatusLabel = "Unknown";
-    String selectedStatusIcon = "•";
+    int paidCount = 0;
+    int pendingCount = 0;
+    int otherCount = 0;
 
-    if (selectedPayment != null) {
+    BigDecimal paidTotal = BigDecimal.ZERO;
 
-        if (selectedPayment.isPaid()) {
-
-            selectedStatusClass = "status-paid";
-            selectedStatusLabel = "Paid";
-            selectedStatusIcon = "✓";
-
-        } else if (selectedPayment.isPending()) {
-
-            selectedStatusClass = "status-pending";
-            selectedStatusLabel = "Pending";
-            selectedStatusIcon = "◷";
-
-        } else if (selectedPayment.isRejected()) {
-
-            selectedStatusClass = "status-failed";
-            selectedStatusLabel = "Rejected";
-            selectedStatusIcon = "×";
-
-        } else if (selectedPayment.isFailed()) {
-
-            selectedStatusClass = "status-failed";
-            selectedStatusLabel = "Failed";
-            selectedStatusIcon = "×";
+    for (Payment p : payments) {
+        if (p.isPaid()) {
+            paidCount++;
+            if (p.getAmount() != null) {
+                paidTotal = paidTotal.add(p.getAmount());
+            }
+        } else if (p.isPending()) {
+            pendingCount++;
+        } else {
+            otherCount++;
         }
     }
 
-    // ==========================================
-    // PAYMENT MESSAGE
-    // ==========================================
+    String paidTotalText = "LKR " +
+            String.format(Locale.US, "%,.2f", paidTotal);
 
-    if (selectedPayment != null
-            && (paymentMessage == null
-            || paymentMessage.isBlank())) {
-
+    if (selectedPayment != null && paymentMessage.isBlank()) {
         if (selectedPayment.isPending()) {
-
             paymentMessage =
-                    "Your bank transfer request is awaiting "
-                            + "administrator verification.";
-
-        } else if (selectedPayment.isPaid()
-                && selectedPayment.hasRental()) {
-
-            paymentMessage =
-                    "Your payment is recorded and "
-                            + "your rental is linked.";
+                    "PAYHERE".equalsIgnoreCase(
+                            selectedPayment.getPaymentMethod()
+                    )
+                            ? "Waiting for PayHere to confirm your payment. This page does not confirm payments itself."
+                            : "Payment is pending administrator verification.";
 
         } else if (selectedPayment.isPaid()) {
+            paymentMessage = selectedPayment.hasRental()
+                    ? "Payment confirmed. Your movie rental is linked."
+                    : "Payment confirmed. Open the payment details to activate your rental.";
 
+        } else {
             paymentMessage =
-                    "Your payment is recorded, but "
-                            + "rental activation is not complete.";
-
-        } else if (selectedPayment.isRejected()) {
-
-            paymentMessage =
-                    "Your payment was rejected. "
-                            + "Please contact the administrator.";
-
-        } else if (selectedPayment.isFailed()) {
-
-            paymentMessage =
-                    "Your payment failed. "
-                            + "Please return to the catalogue.";
+                    "This transaction was not completed. Check its status or contact support.";
         }
     }
 %>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080c18">
 
     <title>My Payments | CineRent</title>
 
     <link rel="stylesheet"
-          href="<%= ctx %>/css/style.css">
+          href="<%= safe(context) %>/css/style.css">
 
     <style>
-
-        /* ==========================================
-           PAGE DESIGN
-        ========================================== */
-
-        .mp-page {
-            min-height: 100vh;
-            padding: 42px 0 75px;
-
-            background:
-                    radial-gradient(
-                            circle at 85% 5%,
-                            rgba(124, 58, 237, 0.15),
-                            transparent 35%
-                    ),
-                    #0b1020;
-
-            color: #f8fafc;
+        .cr-payments,
+        .cr-payments * {
+            box-sizing: border-box;
         }
 
-        .mp-container {
-            width: min(1250px, 94%);
+        body.cr-payments {
+            margin: 0;
+            min-height: 100vh;
+            background: #080c18;
+            color: #f6f5ff;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+        }
+
+        .cr-payments a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .cr-payments a:focus-visible,
+        .cr-payments button:focus-visible,
+        .cr-payments input:focus-visible {
+            outline: 2px solid #c4b5fd;
+            outline-offset: 3px;
+        }
+
+        .cr-shell {
+            max-width: 1240px;
+            padding: 0 22px;
             margin: 0 auto;
         }
 
-        /* ==========================================
-           HEADER
-        ========================================== */
+        .cr-header {
+            background: #0b0e1a;
+            border-bottom: 1px solid #263048;
+        }
 
-        .mp-header {
+        .cr-header-inner {
+            min-height: 75px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 20px;
-
-            margin-bottom: 30px;
+            gap: 28px;
         }
 
-        .mp-eyebrow {
-            display: inline-block;
-
-            padding: 7px 13px;
-            margin-bottom: 12px;
-
-            border-radius: 30px;
-            border: 1px solid rgba(167,139,250,.25);
-
-            background: rgba(124,58,237,.13);
-            color: #c4b5fd;
-
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .mp-header h1 {
-            margin: 0;
-
-            color: #ffffff;
-            font-size: clamp(28px, 4vw, 38px);
-            font-weight: 800;
-            letter-spacing: -1px;
-        }
-
-        .mp-header p {
-            margin: 10px 0 0;
-
-            color: #94a3b8;
-            font-size: 14px;
-            line-height: 1.7;
-        }
-
-        .mp-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-
-            padding: 12px 17px;
-
-            border: 1px solid #334155;
-            border-radius: 11px;
-
-            background: #1e293b;
-            color: #f8fafc;
-
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 650;
-
-            transition: .2s ease;
-        }
-
-        .mp-btn:hover {
-            border-color: #8b5cf6;
-            background: #293651;
-        }
-
-        .mp-btn-primary {
-            border-color: #7c3aed;
-            background: #7c3aed;
-        }
-
-        .mp-btn-primary:hover {
-            background: #6d28d9;
-        }
-
-        /* ==========================================
-           STATISTICS
-        ========================================== */
-
-        .mp-stats {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 17px;
-
-            margin-bottom: 30px;
-        }
-
-        .mp-stat {
-            padding: 23px;
-
-            border: 1px solid #283449;
-            border-radius: 17px;
-
-            background: #141e30;
-        }
-
-        .mp-stat-icon {
+        .cr-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
-
-            width: 45px;
-            height: 45px;
-
-            margin-bottom: 19px;
-
-            border-radius: 12px;
-
-            background: rgba(139,92,246,.15);
-            font-size: 22px;
-        }
-
-        .mp-stat-label {
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        .mp-stat-value {
-            margin-top: 8px;
-
-            color: #ffffff;
-            font-size: 28px;
-            font-weight: 800;
-
-            overflow-wrap: anywhere;
-        }
-
-        .mp-stat-value.green {
-            color: #86efac;
-        }
-
-        .mp-stat-value.yellow {
-            color: #fcd34d;
-        }
-
-        .mp-stat-value.amount {
-            color: #c4b5fd;
-            font-size: 21px;
-        }
-
-        /* ==========================================
-           SELECTED PAYMENT DETAILS
-        ========================================== */
-
-        .mp-details {
-            margin-bottom: 30px;
-
-            border: 1px solid #283449;
-            border-radius: 20px;
-
-            background: #141e30;
-            overflow: hidden;
-        }
-
-        .mp-section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-
-            padding: 24px;
-
-            border-bottom: 1px solid #283449;
-        }
-
-        .mp-section-header h2 {
-            margin: 0;
-
-            color: #ffffff;
-            font-size: 19px;
-            font-weight: 750;
-        }
-
-        .mp-section-header p {
-            margin: 7px 0 0;
-
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        .mp-details-body {
-            padding: 25px;
-        }
-
-        .mp-detail-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 22px;
-        }
-
-        .mp-detail-label {
-            margin-bottom: 7px;
-
-            color: #64748b;
-            font-size: 12px;
-        }
-
-        .mp-detail-value {
-            color: #f8fafc;
-            font-size: 14px;
-            font-weight: 650;
-            overflow-wrap: anywhere;
-        }
-
-        .mp-detail-amount {
-            color: #c4b5fd;
-            font-size: 23px;
-            font-weight: 800;
-        }
-
-        /* ==========================================
-           STATUS
-        ========================================== */
-
-        .mp-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-
-            padding: 7px 12px;
-
-            border-radius: 30px;
-
-            font-size: 11px;
-            font-weight: 750;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 850;
             white-space: nowrap;
         }
 
-        .status-paid {
-            color: #86efac;
-            background: rgba(16,185,129,.14);
+        .cr-brand-mark {
+            display: grid;
+            place-items: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: #7934eb;
+            color: #fff;
         }
 
-        .status-pending {
-            color: #fcd34d;
-            background: rgba(245,158,11,.14);
-        }
-
-        .status-failed {
-            color: #fca5a5;
-            background: rgba(239,68,68,.14);
-        }
-
-        .status-unknown {
-            color: #cbd5e1;
-            background: #334155;
-        }
-
-        /* ==========================================
-           PAYMENT NOTICE
-        ========================================== */
-
-        .mp-notice {
-            margin-top: 25px;
-            padding: 18px;
-
-            border: 1px solid rgba(139,92,246,.25);
-            border-radius: 13px;
-
-            background: rgba(139,92,246,.08);
-
-            color: #cbd5e1;
-            font-size: 13px;
-            line-height: 1.8;
-        }
-
-        .mp-notice strong {
-            display: block;
-            margin-bottom: 6px;
-            color: #ddd6fe;
-        }
-
-        .mp-notice-warning {
-            border-color: rgba(245,158,11,.3);
-            background: rgba(245,158,11,.08);
-        }
-
-        .mp-notice-warning strong {
-            color: #fcd34d;
-        }
-
-        .mp-notice-error {
-            border-color: rgba(239,68,68,.3);
-            background: rgba(239,68,68,.08);
-        }
-
-        .mp-notice-error strong {
-            color: #fca5a5;
-        }
-
-        .mp-actions {
+        .cr-nav {
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 23px;
+            gap: 22px;
+            align-items: center;
+            margin-right: auto;
         }
 
-        /* ==========================================
-           HISTORY TABLE
-        ========================================== */
-
-        .mp-history {
-            border: 1px solid #283449;
-            border-radius: 20px;
-
-            background: #141e30;
-            overflow: hidden;
-        }
-
-        .mp-toolbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-
-            padding: 20px 24px;
-            border-bottom: 1px solid #283449;
-        }
-
-        .mp-search,
-        .mp-filter {
-            padding: 12px 14px;
-
-            border: 1px solid #334155;
-            border-radius: 10px;
-
-            background: #0f172a;
-            color: #f8fafc;
-
-            font-family: inherit;
+        .cr-nav a {
+            color: #aab6cf;
             font-size: 13px;
-            outline: none;
-        }
-
-        .mp-search {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .mp-filter {
-            min-width: 155px;
-        }
-
-        .mp-search:focus,
-        .mp-filter:focus {
-            border-color: #8b5cf6;
-        }
-
-        .mp-table-wrap {
-            overflow-x: auto;
-        }
-
-        .mp-table {
-            width: 100%;
-            min-width: 890px;
-            border-collapse: collapse;
-        }
-
-        .mp-table th {
-            padding: 17px;
-
-            background: #10192a;
-
-            color: #94a3b8;
-            font-size: 11px;
-            font-weight: 750;
-            text-transform: uppercase;
-            text-align: left;
-        }
-
-        .mp-table td {
-            padding: 18px 17px;
-
-            border-top: 1px solid #283449;
-
-            color: #cbd5e1;
-            font-size: 13px;
-            vertical-align: middle;
-        }
-
-        .mp-table tbody tr:hover {
-            background: rgba(139,92,246,.045);
-        }
-
-        .mp-payment-id {
-            color: #c4b5fd;
-            font-weight: 750;
-        }
-
-        .mp-strong {
-            color: #f8fafc;
             font-weight: 650;
+            padding: 26px 0;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
         }
 
-        .mp-muted {
-            display: block;
-            margin-top: 5px;
-
-            color: #64748b;
-            font-size: 11px;
+        .cr-nav a:hover,
+        .cr-nav a.active {
+            color: #e6d7ff;
+            border-bottom-color: #9c63ff;
         }
 
-        .mp-view-link {
-            color: #c4b5fd;
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        .mp-view-link:hover {
-            color: #ddd6fe;
-            text-decoration: underline;
-        }
-
-        /* ==========================================
-           EMPTY STATE
-        ========================================== */
-
-        .mp-empty {
-            padding: 60px 20px;
-            text-align: center;
-        }
-
-        .mp-empty-icon {
-            margin-bottom: 16px;
-            font-size: 43px;
-        }
-
-        .mp-empty h3 {
-            margin: 0 0 10px;
-            color: #ffffff;
-            font-size: 18px;
-        }
-
-        .mp-empty p {
-            margin: 0 0 22px;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        .mp-no-results {
-            display: none;
-        }
-
-        /* ==========================================
-           FOOTER
-        ========================================== */
-
-        .mp-footer {
+        .cr-account {
             display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-
-            margin-top: 30px;
-
-            color: #64748b;
+            gap: 10px;
+            align-items: center;
+            color: #cfd7ea;
             font-size: 12px;
         }
 
-        /* ==========================================
-           RESPONSIVE
-        ========================================== */
-
-        @media (max-width: 1050px) {
-
-            .mp-stats {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+        .cr-avatar {
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #4939c8;
+            font-weight: 800;
         }
 
-        @media (max-width: 650px) {
+        .cr-logout {
+            padding: 9px 12px;
+            border: 1px solid #343e55;
+            border-radius: 9px;
+        }
 
-            .mp-page {
-                padding-top: 25px;
-            }
+        .cr-main {
+            padding-top: 38px;
+            padding-bottom: 65px;
+        }
 
-            .mp-stats,
-            .mp-detail-grid {
+        .cr-breadcrumb {
+            color: #91a1bb;
+            font-size: 12px;
+            margin-bottom: 17px;
+        }
+
+        .cr-breadcrumb a:hover {
+            color: #c6b2ff;
+        }
+
+        .cr-hero {
+            padding: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 22px;
+            border-radius: 20px;
+            border: 1px solid #43325f;
+            background:
+                    radial-gradient(
+                            circle at 90% 15%,
+                            #41285d 0,
+                            transparent 38%
+                    ),
+                    linear-gradient(120deg, #1d1939, #111a2b);
+        }
+
+        .cr-eyebrow {
+            color: #c2adff;
+            text-transform: uppercase;
+            letter-spacing: 1.6px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .cr-hero h1 {
+            margin: 10px 0;
+            font-size: clamp(28px, 4vw, 40px);
+        }
+
+        .cr-hero p {
+            margin: 0;
+            max-width: 580px;
+            line-height: 1.65;
+            color: #b5c2d7;
+            font-size: 13px;
+        }
+
+        .cr-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .cr-btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 42px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .cr-btn.primary {
+            background: #7b36ed;
+            color: #fff;
+        }
+
+        .cr-btn.primary:hover {
+            background: #8d56f5;
+        }
+
+        .cr-btn.secondary {
+            border: 1px solid #4d4a67;
+            background: #ffffff0b;
+        }
+
+        .cr-btn.secondary:hover {
+            background: #ffffff1c;
+        }
+
+        .cr-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin: 22px 0;
+        }
+
+        .cr-card {
+            border: 1px solid #28334a;
+            border-radius: 16px;
+            background: #121b2c;
+        }
+
+        .cr-stat {
+            padding: 22px;
+        }
+
+        .cr-stat-label {
+            color: #9eacc3;
+            font-size: 12px;
+        }
+
+        .cr-stat-value {
+            display: block;
+            margin-top: 12px;
+            font-size: clamp(22px, 2.4vw, 28px);
+            font-weight: 850;
+            overflow-wrap: anywhere;
+        }
+
+        .cr-stat-foot {
+            display: block;
+            color: #8293ae;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .cr-selected {
+            padding: 23px;
+            margin-bottom: 22px;
+            border-color: #58417b;
+        }
+
+        .cr-section-title {
+            margin: 0;
+            font-size: 19px;
+        }
+
+        .cr-subtitle {
+            color: #93a3bd;
+            font-size: 12px;
+            margin: 6px 0 0;
+        }
+
+        .cr-section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .cr-notice {
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #514171;
+            background: #2c2543;
+            color: #e7d9ff;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 18px;
+        }
+
+        .cr-details {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+            margin-top: 22px;
+        }
+
+        .cr-detail-label {
+            color: #91a0b9;
+            font-size: 11px;
+            margin-bottom: 7px;
+        }
+
+        .cr-detail-value {
+            color: #f2f5ff;
+            font-size: 13px;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .cr-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: capitalize;
+        }
+
+        .cr-status.paid {
+            background: #143b30;
+            color: #7ce0b3;
+            border: 1px solid #24614b;
+        }
+
+        .cr-status.pending {
+            background: #44371a;
+            color: #f4ce7a;
+            border: 1px solid #71551e;
+        }
+
+        .cr-status.other {
+            background: #482530;
+            color: #f5a4b1;
+            border: 1px solid #70384a;
+        }
+
+        .cr-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 280px;
+            align-items: start;
+            gap: 18px;
+        }
+
+        .cr-panel-head {
+            padding: 22px;
+            border-bottom: 1px solid #28334a;
+        }
+
+        .cr-toolbar {
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .cr-filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .cr-filter {
+            cursor: pointer;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #9aabc3;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+
+        .cr-filter.active {
+            color: #e3d6ff;
+            background: #312649;
+            border-color: #554071;
+        }
+
+        .cr-search {
+            width: 200px;
+            max-width: 100%;
+            padding: 9px 12px;
+            border-radius: 9px;
+            background: #0a1322;
+            border: 1px solid #354159;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .cr-table-wrap {
+            overflow-x: auto;
+        }
+
+        .cr-table {
+            width: 100%;
+            min-width: 610px;
+            border-collapse: collapse;
+        }
+
+        .cr-table th {
+            padding: 13px 17px;
+            color: #91a0ba;
+            font-size: 11px;
+            text-align: left;
+            background: #162137;
+        }
+
+        .cr-table td {
+            padding: 17px;
+            border-top: 1px solid #2a354b;
+            color: #d5deef;
+            font-size: 12px;
+        }
+
+        .cr-table tr:hover {
+            background: #1b283d;
+        }
+
+        .cr-table small {
+            display: block;
+            color: #8294b1;
+            margin-top: 6px;
+        }
+
+        .cr-table a.view {
+            color: #bca3ff;
+            font-weight: 800;
+        }
+
+        .cr-empty {
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .cr-empty .icon {
+            font-size: 42px;
+        }
+
+        .cr-empty h3 {
+            margin: 12px 0;
+        }
+
+        .cr-empty p {
+            color: #9dacbf;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .cr-no-match {
+            padding: 18px;
+            color: #aab6c9;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .cr-aside {
+            padding: 23px;
+        }
+
+        .cr-aside h3 {
+            margin: 0 0 17px;
+            font-size: 16px;
+        }
+
+        .cr-step {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .cr-step-num {
+            display: grid;
+            place-items: center;
+            width: 26px;
+            height: 26px;
+            flex: 0 0 26px;
+            border-radius: 50%;
+            background: #34264e;
+            color: #d7c3ff;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .cr-step strong {
+            font-size: 12px;
+        }
+
+        .cr-step p {
+            margin: 5px 0 0;
+            color: #91a1ba;
+            line-height: 1.55;
+            font-size: 11px;
+        }
+
+        .cr-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: #8091ab;
+            font-size: 12px;
+            margin-top: 35px;
+        }
+
+        .cr-footer a {
+            color: #c0aaff;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 950px) {
+            .cr-grid {
                 grid-template-columns: 1fr;
             }
 
-            .mp-section-header,
-            .mp-details-body,
-            .mp-toolbar {
-                padding: 18px;
+            .cr-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
-            .mp-search,
-            .mp-filter {
-                width: 100%;
-                min-width: 0;
-            }
-
-            .mp-header .mp-btn {
-                width: 100%;
+            .cr-nav {
+                gap: 12px;
             }
         }
 
-    </style>
+        @media (max-width: 680px) {
+            .cr-header-inner {
+                flex-wrap: wrap;
+                padding-top: 12px;
+                padding-bottom: 12px;
+                gap: 12px;
+            }
 
+            .cr-nav {
+                order: 3;
+                width: 100%;
+                gap: 16px;
+                overflow-x: auto;
+            }
+
+            .cr-nav a {
+                padding: 9px 0;
+            }
+
+            .cr-account {
+                margin-left: auto;
+            }
+
+            .cr-account-name {
+                display: none;
+            }
+
+            .cr-hero {
+                padding: 24px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .cr-details {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .cr-stats {
+                gap: 9px;
+            }
+
+            .cr-stat {
+                padding: 15px;
+            }
+
+            .cr-shell {
+                padding: 0 14px;
+            }
+
+            .cr-footer {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 
-<body>
+<body class="cr-payments">
 
-<!-- ==========================================
-     CUSTOMER NAVIGATION
-========================================== -->
+<header class="cr-header">
+    <div class="cr-shell cr-header-inner">
 
-<jsp:include
-        page="/WEB-INF/views/partials/customer-nav.jsp"
-/>
+        <a class="cr-brand" href="<%= safe(context) %>/">
+            <span class="cr-brand-mark">C</span>
+            CineRent
+        </a>
 
-<!-- ==========================================
-     MAIN PAGE
-========================================== -->
+        <nav class="cr-nav" aria-label="Main navigation">
+            <a href="<%= safe(context) %>/">Home</a>
+            <a href="<%= safe(context) %>/catalog">Movies</a>
+            <a href="<%= safe(context) %>/rentals">My Rentals</a>
+            <a class="active"
+               aria-current="page"
+               href="<%= safe(context) %>/payments">
+                My Payments
+            </a>
+            <a href="<%= safe(context) %>/recently-watched">
+                Recently Watched
+            </a>
+        </nav>
 
-<main class="mp-page">
+        <div class="cr-account">
+            <span class="cr-avatar"><%= safe(initial) %></span>
+            <span class="cr-account-name">
+                Hi, <%= safe(userName) %>
+            </span>
+            <a class="cr-logout"
+               href="<%= safe(context) %>/logout">
+                Logout
+            </a>
+        </div>
+    </div>
+</header>
 
-    <div class="mp-container">
+<main class="cr-shell cr-main">
 
-        <!-- ==================================
-             PAGE HEADER
-        =================================== -->
+    <div class="cr-breadcrumb">
+        <a href="<%= safe(context) %>/">Home</a>
+        &rsaquo; My Payments
+    </div>
 
-        <header class="mp-header">
+    <section class="cr-hero">
+        <div>
+            <div class="cr-eyebrow">CineRent / Billing</div>
+            <h1>My Payments</h1>
+            <p>
+                Welcome, <strong><%= safe(userName) %></strong>.
+                Review payments, track PayHere confirmations
+                and bank transfer approvals, and manage your
+                movie rentals.
+            </p>
+        </div>
+
+        <div class="cr-actions">
+            <a class="cr-btn primary"
+               href="<%= safe(context) %>/catalog">
+                Browse Movies
+            </a>
+            <a class="cr-btn secondary"
+               href="<%= safe(context) %>/rentals">
+                My Rentals
+            </a>
+        </div>
+    </section>
+
+    <section class="cr-stats" aria-label="Payment overview">
+
+        <div class="cr-card cr-stat">
+            <span class="cr-stat-label">Total Transactions</span>
+            <strong class="cr-stat-value">
+                <%= payments.size() %>
+            </strong>
+            <span class="cr-stat-foot">All payment records</span>
+        </div>
+
+        <div class="cr-card cr-stat">
+            <span class="cr-stat-label">Paid</span>
+            <strong class="cr-stat-value">
+                <%= paidCount %>
+            </strong>
+            <span class="cr-stat-foot">Successfully confirmed</span>
+        </div>
+
+        <div class="cr-card cr-stat">
+            <span class="cr-stat-label">Pending</span>
+            <strong class="cr-stat-value">
+                <%= pendingCount %>
+            </strong>
+            <span class="cr-stat-foot">Awaiting confirmation</span>
+        </div>
+
+        <div class="cr-card cr-stat">
+            <span class="cr-stat-label">Total Paid</span>
+            <strong class="cr-stat-value">
+                <%= safe(paidTotalText) %>
+            </strong>
+            <span class="cr-stat-foot">Confirmed payment total</span>
+        </div>
+    </section>
+
+    <% if (selectedPayment != null) {
+        String selectedId = URLEncoder.encode(
+                selectedPayment.getPaymentId() == null
+                        ? "" : selectedPayment.getPaymentId(),
+                StandardCharsets.UTF_8
+        );
+    %>
+
+    <section class="cr-card cr-selected"
+             aria-label="Selected payment">
+
+        <div class="cr-section-head">
+            <div>
+                <h2 class="cr-section-title">Payment Details</h2>
+                <p class="cr-subtitle">
+                    Transaction
+                    <%= safe(selectedPayment.getPaymentId()) %>
+                </p>
+            </div>
+
+            <span class="cr-status <%= badgeClass(selectedPayment) %>">
+                <%= safe(badgeText(selectedPayment)) %>
+            </span>
+        </div>
+
+        <% if (!paymentMessage.isBlank()) { %>
+        <div class="cr-notice">
+            <%= safe(paymentMessage) %>
+        </div>
+        <% } %>
+
+        <div class="cr-details">
 
             <div>
-
-                <span class="mp-eyebrow">
-                    💳 Customer Payments
-                </span>
-
-                <h1>My Payments</h1>
-
-                <p>
-                    Welcome,
-                    <%= HtmlUtil.escape(userName) %>.
-                    Track your payments and rental transactions.
-                </p>
-
+                <div class="cr-detail-label">Payment ID</div>
+                <div class="cr-detail-value">
+                    <%= safe(selectedPayment.getPaymentId()) %>
+                </div>
             </div>
 
-            <a href="<%= ctx %>/catalog"
-               class="mp-btn">
+            <div>
+                <div class="cr-detail-label">Movie</div>
+                <div class="cr-detail-value">
+                    <%= selectedMovie == null
+                            ? safe(selectedPayment.getMovieId())
+                            : safe(selectedMovie.getTitle()) %>
+                </div>
+            </div>
 
-                ← Browse Movies
+            <div>
+                <div class="cr-detail-label">Amount</div>
+                <div class="cr-detail-value">
+                    <%= safe(selectedPayment.getFormattedAmount()) %>
+                </div>
+            </div>
 
+            <div>
+                <div class="cr-detail-label">Payment Method</div>
+                <div class="cr-detail-value">
+                    <%= safe(selectedPayment.getPaymentMethodDisplay()) %>
+                </div>
+            </div>
+
+            <div>
+                <div class="cr-detail-label">Created At</div>
+                <div class="cr-detail-value">
+                    <%= safe(selectedPayment.getFormattedCreatedAt()) %>
+                </div>
+            </div>
+
+            <div>
+                <div class="cr-detail-label">Rental Access</div>
+                <div class="cr-detail-value">
+                    <%= selectedPayment.hasRental()
+                            ? "Rental linked"
+                            : "Not activated" %>
+                </div>
+            </div>
+        </div>
+
+        <div class="cr-actions" style="margin-top:22px">
+
+            <% if (selectedPayment.isPending()) { %>
+
+            <a class="cr-btn secondary"
+               href="<%= safe(context) %>/payments?paymentId=<%= safe(selectedId) %>">
+                Refresh Status
             </a>
 
-        </header>
+            <% } else if (selectedPayment.isPaid()
+                    && !selectedPayment.hasRental()) { %>
 
-        <!-- ==================================
-             STATISTICS
-        =================================== -->
+            <a class="cr-btn primary"
+               href="<%= safe(context) %>/payments?paymentId=<%= safe(selectedId) %>">
+                Continue to Rental Activation
+            </a>
 
-        <section class="mp-stats"
-                 aria-label="Payment statistics">
+            <% } else if (selectedPayment.isPaid()) { %>
 
-            <!-- TOTAL -->
+            <a class="cr-btn primary"
+               href="<%= safe(context) %>/rentals">
+                View My Rentals
+            </a>
 
-            <div class="mp-stat">
+            <% } else { %>
 
-                <div class="mp-stat-icon">
-                    💳
-                </div>
+            <a class="cr-btn secondary"
+               href="<%= safe(context) %>/catalog">
+                Choose Another Movie
+            </a>
 
-                <div class="mp-stat-label">
-                    Total Payments
-                </div>
+            <% } %>
+        </div>
+    </section>
 
-                <div class="mp-stat-value">
-                    <%= totalPayments %>
-                </div>
+    <% } %>
 
-            </div>
+    <div class="cr-grid">
 
-            <!-- PAID -->
+        <section class="cr-card" aria-labelledby="history-title">
 
-            <div class="mp-stat">
-
-                <div class="mp-stat-icon">
-                    ✓
-                </div>
-
-                <div class="mp-stat-label">
-                    Paid Payments
-                </div>
-
-                <div class="mp-stat-value green">
-                    <%= paidPayments %>
-                </div>
-
-            </div>
-
-            <!-- PENDING -->
-
-            <div class="mp-stat">
-
-                <div class="mp-stat-icon">
-                    ⏳
-                </div>
-
-                <div class="mp-stat-label">
-                    Pending Payments
-                </div>
-
-                <div class="mp-stat-value yellow">
-                    <%= pendingPayments %>
-                </div>
-
-            </div>
-
-            <!-- AMOUNT -->
-
-            <div class="mp-stat">
-
-                <div class="mp-stat-icon">
-                    📊
-                </div>
-
-                <div class="mp-stat-label">
-                    Recorded Paid Amount
-                </div>
-
-                <div class="mp-stat-value amount">
-
-                    <%= HtmlUtil.escape(
-                            formattedTotalPaid
-                    ) %>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <!-- ==================================
-             SELECTED PAYMENT
-        =================================== -->
-
-        <%
-            if (selectedPayment != null) {
-        %>
-
-        <section class="mp-details">
-
-            <div class="mp-section-header">
-
+            <div class="cr-panel-head cr-section-head">
                 <div>
-
-                    <h2>
-                        Payment Details
-                    </h2>
-
-                    <p>
-                        Transaction reference:
-                        <%= HtmlUtil.escape(
-                                selectedPayment.getPaymentId()
-                        ) %>
-                    </p>
-
-                </div>
-
-                <span class="mp-status <%= selectedStatusClass %>">
-
-                    <%= selectedStatusIcon %>
-
-                    <%= selectedStatusLabel %>
-
-                </span>
-
-            </div>
-
-            <div class="mp-details-body">
-
-                <div class="mp-detail-grid">
-
-                    <!-- PAYMENT ID -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Payment ID
-                        </div>
-
-                        <div class="mp-detail-value">
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getPaymentId()
-                            ) %>
-
-                        </div>
-
-                    </div>
-
-                    <!-- MOVIE -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Movie
-                        </div>
-
-                        <div class="mp-detail-value">
-
-                            <%
-                                if (selectedMovie != null) {
-                            %>
-
-                            <%= HtmlUtil.escape(
-                                    selectedMovie.getTitle()
-                            ) %>
-
-                            <%
-                            } else {
-                            %>
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getMovieId()
-                            ) %>
-
-                            <%
-                                }
-                            %>
-
-                        </div>
-
-                    </div>
-
-                    <!-- PAYMENT METHOD -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Payment Method
-                        </div>
-
-                        <div class="mp-detail-value">
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getPaymentMethodDisplay()
-                            ) %>
-
-                        </div>
-
-                    </div>
-
-                    <!-- AMOUNT -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Payment Amount
-                        </div>
-
-                        <div class="mp-detail-value mp-detail-amount">
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getFormattedAmount()
-                            ) %>
-
-                        </div>
-
-                    </div>
-
-                    <!-- DATE -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Payment Created
-                        </div>
-
-                        <div class="mp-detail-value">
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getFormattedCreatedAt()
-                            ) %>
-
-                        </div>
-
-                    </div>
-
-                    <!-- RENTAL ID -->
-
-                    <div>
-
-                        <div class="mp-detail-label">
-                            Linked Rental
-                        </div>
-
-                        <div class="mp-detail-value">
-
-                            <%
-                                if (selectedPayment.hasRental()) {
-                            %>
-
-                            <%= HtmlUtil.escape(
-                                    selectedPayment.getRentalId()
-                            ) %>
-
-                            <%
-                            } else {
-                            %>
-
-                            Not yet linked
-
-                            <%
-                                }
-                            %>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ==========================
-                     PAYMENT MESSAGE
-                =========================== -->
-
-                <%
-                    if (paymentMessage != null
-                            && !paymentMessage.isBlank()) {
-                %>
-
-                <div class="mp-notice
-                    <%= selectedPayment.isPending()
-                            ? "mp-notice-warning"
-                            : "" %>
-                    <%= selectedPayment.isFailed()
-                            || selectedPayment.isRejected()
-                            ? "mp-notice-error"
-                            : "" %>">
-
-                    <strong>
-
-                        <%
-                            if (selectedPayment.isPending()) {
-                        %>
-
-                        Payment Awaiting Verification
-
-                        <%
-                        } else if (selectedPayment.isPaid()
-                                && selectedPayment.hasRental()) {
-                        %>
-
-                        Payment and Rental Linked
-
-                        <%
-                        } else if (selectedPayment.isPaid()) {
-                        %>
-
-                        Payment Recorded — Activation Pending
-
-                        <%
-                        } else {
-                        %>
-
-                        Payment Update
-
-                        <%
-                            }
-                        %>
-
-                    </strong>
-
-                    <%= HtmlUtil.escape(
-                            paymentMessage
-                    ) %>
-
-                </div>
-
-                <%
-                    }
-                %>
-
-                <!-- ==========================
-                     BANK TRANSFER INSTRUCTIONS
-                =========================== -->
-
-                <%
-                    if (selectedPayment.isPending()
-                            && selectedPayment.isBankTransfer()) {
-                %>
-
-                <div class="mp-notice mp-notice-warning">
-
-                    <strong>
-                        🏦 Bank Transfer Instructions
-                    </strong>
-
-                    Complete your transfer using the bank
-                    details provided by the administrator.
-
-                    Use payment reference
-
-                    <strong style="display:inline;">
-
-                        <%= HtmlUtil.escape(
-                                selectedPayment.getPaymentId()
-                        ) %>
-
-                    </strong>
-
-                    when contacting the administrator.
-
-                    Keep your transfer receipt and submit
-                    it for verification.
-
-                    Your rental will become available
-                    only after payment approval and
-                    successful rental activation.
-
-                </div>
-
-                <%
-                    }
-                %>
-
-                <!-- ==========================
-                     ACTION BUTTONS
-                =========================== -->
-
-                <div class="mp-actions">
-
-                    <a href="<%= ctx %>/payments"
-                       class="mp-btn">
-
-                        All My Payments
-
-                    </a>
-
-                    <%
-                        if (selectedPayment.isPaid()
-                                && selectedPayment.hasRental()) {
-                    %>
-
-                    <a href="<%= ctx %>/rentals"
-                       class="mp-btn mp-btn-primary">
-
-                        View My Rentals
-
-                    </a>
-
-                    <%
-                    } else {
-                    %>
-
-                    <a href="<%= ctx %>/catalog"
-                       class="mp-btn">
-
-                        Browse Movies
-
-                    </a>
-
-                    <%
-                        }
-                    %>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <%
-            }
-        %>
-
-        <!-- ==================================
-             PAYMENT HISTORY
-        =================================== -->
-
-        <section class="mp-history">
-
-            <div class="mp-section-header">
-
-                <div>
-
-                    <h2>
+                    <h2 id="history-title" class="cr-section-title">
                         Payment History
                     </h2>
-
-                    <p>
-                        View your payment records and statuses.
+                    <p class="cr-subtitle">
+                        Your CineRent movie rental transactions
                     </p>
-
                 </div>
 
-                <span class="mp-status status-unknown">
-
-                    <span id="visiblePaymentCount">
-                        <%= totalPayments %>
-                    </span>
-
-                    Records
-
+                <span class="cr-subtitle">
+                    <%= payments.size() %> records
                 </span>
-
             </div>
 
-            <!-- SEARCH -->
+            <% if (payments.isEmpty()) { %>
 
-            <div class="mp-toolbar">
+            <div class="cr-empty">
+                <div class="icon">🎬</div>
+                <h3>No payments yet</h3>
+                <p>
+                    Choose a movie, select a payment method,
+                    and start your rental journey.
+                </p>
 
-                <input
-                        type="search"
-                        id="paymentSearch"
-                        class="mp-search"
-                        placeholder="Search payment or movie ID..."
-                        aria-label="Search payments"
-                >
+                <a class="cr-btn primary"
+                   href="<%= safe(context) %>/catalog">
+                    Browse Movies
+                </a>
+            </div>
 
-                <select
-                        id="paymentStatusFilter"
-                        class="mp-filter"
-                        aria-label="Filter payments by status"
-                >
+            <% } else { %>
 
-                    <option value="ALL">
-                        All Statuses
-                    </option>
+            <div class="cr-toolbar">
 
-                    <option value="PAID">
+                <div class="cr-filters"
+                     role="group"
+                     aria-label="Filter payments">
+
+                    <button type="button"
+                            class="cr-filter active"
+                            data-filter="all"
+                            aria-pressed="true">
+                        All
+                    </button>
+
+                    <button type="button"
+                            class="cr-filter"
+                            data-filter="paid"
+                            aria-pressed="false">
                         Paid
-                    </option>
+                    </button>
 
-                    <option value="PENDING">
+                    <button type="button"
+                            class="cr-filter"
+                            data-filter="pending"
+                            aria-pressed="false">
                         Pending
-                    </option>
+                    </button>
 
-                    <option value="FAILED">
-                        Failed
-                    </option>
+                    <% if (otherCount > 0) { %>
 
-                    <option value="REJECTED">
-                        Rejected
-                    </option>
+                    <button type="button"
+                            class="cr-filter"
+                            data-filter="other"
+                            aria-pressed="false">
+                        Other
+                    </button>
 
-                </select>
+                    <% } %>
+                </div>
 
+                <input type="search"
+                       class="cr-search"
+                       id="payment-search"
+                       placeholder="Search payments..."
+                       aria-label="Search payments">
             </div>
 
-            <!-- PAYMENT TABLE -->
+            <div class="cr-table-wrap">
 
-            <div class="mp-table-wrap">
-
-                <table class="mp-table">
+                <table class="cr-table">
 
                     <thead>
-
                     <tr>
-
-                        <th>Payment ID</th>
-                        <th>Movie ID</th>
+                        <th>Transaction</th>
                         <th>Amount</th>
                         <th>Method</th>
                         <th>Status</th>
-                        <th>Rental ID</th>
-                        <th>Date</th>
-                        <th>Action</th>
-
+                        <th>Details</th>
                     </tr>
-
                     </thead>
 
-                    <tbody>
+                    <tbody id="payment-rows">
 
-                    <%
-                        for (Payment payment : payments) {
+                    <% for (Payment payment : payments) {
 
-                            if (payment == null) {
-                                continue;
-                            }
+                        String paymentId =
+                                payment.getPaymentId() == null
+                                        ? ""
+                                        : payment.getPaymentId();
 
-                            String status =
-                                    payment.getPaymentStatus();
-
-                            if (status == null) {
-                                status = "UNKNOWN";
-                            }
-
-                            String statusClass =
-                                    "status-unknown";
-
-                            if (payment.isPaid()) {
-
-                                statusClass = "status-paid";
-
-                            } else if (payment.isPending()) {
-
-                                statusClass = "status-pending";
-
-                            } else if (payment.isFailed()
-                                    || payment.isRejected()) {
-
-                                statusClass = "status-failed";
-                            }
-
-                            String searchText =
-                                    String.valueOf(payment.getPaymentId())
-                                            + " "
-                                            + String.valueOf(payment.getMovieId())
-                                            + " "
-                                            + payment.getPaymentMethodDisplay();
+                        String encodedId = URLEncoder.encode(
+                                paymentId,
+                                StandardCharsets.UTF_8
+                        );
                     %>
 
-                    <tr class="payment-row"
-                        data-status="<%= HtmlUtil.escape(status) %>"
-                        data-search="<%= HtmlUtil.escape(searchText) %>">
-
-                        <!-- PAYMENT ID -->
+                    <tr data-status="<%= badgeClass(payment) %>">
 
                         <td>
-
-                            <span class="mp-payment-id">
-
-                                <%= HtmlUtil.escape(
-                                        payment.getPaymentId()
-                                ) %>
-
-                            </span>
-
+                            <strong>
+                                <%= safe(paymentId) %>
+                            </strong>
+                            <small>
+                                Movie
+                                <%= safe(payment.getMovieId()) %>
+                                ·
+                                <%= safe(payment.getFormattedCreatedAt()) %>
+                            </small>
                         </td>
 
-                        <!-- MOVIE ID -->
-
                         <td>
-
-                            <span class="mp-strong">
-
-                                <%= HtmlUtil.escape(
-                                        payment.getMovieId()
-                                ) %>
-
-                            </span>
-
+                            <%= safe(payment.getFormattedAmount()) %>
                         </td>
 
-                        <!-- AMOUNT -->
-
                         <td>
-
-                            <span class="mp-strong">
-
-                                <%= HtmlUtil.escape(
-                                        payment.getFormattedAmount()
-                                ) %>
-
-                            </span>
-
+                            <%= safe(payment.getPaymentMethodDisplay()) %>
                         </td>
 
-                        <!-- METHOD -->
-
                         <td>
-
-                            <%= HtmlUtil.escape(
-                                    payment.getPaymentMethodDisplay()
-                            ) %>
-
+                                <span class="cr-status <%= badgeClass(payment) %>">
+                                    <%= safe(badgeText(payment)) %>
+                                </span>
                         </td>
 
-                        <!-- STATUS -->
-
                         <td>
-
-                            <span class="mp-status <%= statusClass %>">
-
-                                <%= HtmlUtil.escape(status) %>
-
-                            </span>
-
-                        </td>
-
-                        <!-- RENTAL -->
-
-                        <td>
-
-                            <%
-                                if (payment.hasRental()) {
-                            %>
-
-                            <span class="mp-strong">
-
-                                <%= HtmlUtil.escape(
-                                        payment.getRentalId()
-                                ) %>
-
-                            </span>
-
-                            <%
-                            } else {
-                            %>
-
-                            <span class="mp-muted">
-                                Not linked
-                            </span>
-
-                            <%
-                                }
-                            %>
-
-                        </td>
-
-                        <!-- DATE -->
-
-                        <td>
-
-                            <%= HtmlUtil.escape(
-                                    payment.getFormattedCreatedAt()
-                            ) %>
-
-                        </td>
-
-                        <!-- VIEW -->
-
-                        <td>
-
-                            <a class="mp-view-link"
-                               href="<%= ctx %>/payments?paymentId=<%= HtmlUtil.escape(payment.getPaymentId()) %>">
-
-                                View Details
-
+                            <a class="view"
+                               href="<%= safe(context) %>/payments?paymentId=<%= safe(encodedId) %>">
+                                View
                             </a>
-
                         </td>
 
                     </tr>
 
-                    <%
-                        }
-                    %>
+                    <% } %>
 
                     </tbody>
-
                 </table>
 
-            </div>
-
-            <!-- EMPTY PAYMENT HISTORY -->
-
-            <%
-                if (totalPayments == 0) {
-            %>
-
-            <div class="mp-empty">
-
-                <div class="mp-empty-icon">
-                    💳
+                <div id="no-payment-match"
+                     class="cr-no-match"
+                     hidden>
+                    No transactions match your filter.
                 </div>
 
-                <h3>
-                    No payments yet
-                </h3>
-
-                <p>
-                    Your movie rental payments
-                    will appear here.
-                </p>
-
-                <a href="<%= ctx %>/catalog"
-                   class="mp-btn mp-btn-primary">
-
-                    Explore Movies
-
-                </a>
-
             </div>
 
-            <%
-                }
-            %>
-
-            <!-- FILTER EMPTY STATE -->
-
-            <div
-                    id="noMatchingPayments"
-                    class="mp-empty mp-no-results"
-            >
-
-                <div class="mp-empty-icon">
-                    🔎
-                </div>
-
-                <h3>
-                    No matching payments
-                </h3>
-
-                <p>
-                    Try another search or status filter.
-                </p>
-
-            </div>
+            <% } %>
 
         </section>
 
-        <!-- ==================================
-             FOOTER
-        =================================== -->
+        <aside class="cr-card cr-aside"
+               aria-label="Payment guidance">
 
-        <footer class="mp-footer">
+            <h3>How to Rent &amp; Pay</h3>
 
-            <span>
-                © 2026 CineRent
-            </span>
+            <div class="cr-step">
+                <span class="cr-step-num">1</span>
+                <div>
+                    <strong>Choose a movie</strong>
+                    <p>
+                        Click Rent &amp; Pay from the movie catalog.
+                    </p>
+                </div>
+            </div>
 
-            <span>
-                Movie Rental & Review Platform
-            </span>
+            <div class="cr-step">
+                <span class="cr-step-num">2</span>
+                <div>
+                    <strong>Select payment method</strong>
+                    <p>
+                        PayHere opens secure hosted checkout.
+                        Bank transfers wait for admin approval.
+                        Demo Card is for testing only.
+                    </p>
+                </div>
+            </div>
 
-        </footer>
+            <div class="cr-step">
+                <span class="cr-step-num">3</span>
+                <div>
+                    <strong>Confirm &amp; activate</strong>
+                    <p>
+                        Only a verified paid transaction can
+                        activate a rental.
+                    </p>
+                </div>
+            </div>
 
+            <div class="cr-notice">
+                PayHere confirmation is processed by the server
+                callback, not by returning to this page.
+            </div>
+
+        </aside>
     </div>
+
+    <footer class="cr-footer">
+        <span>
+            &copy; <%= java.time.Year.now().getValue() %> CineRent
+        </span>
+        <span>
+            <a href="<%= safe(context) %>/catalog">
+                Browse Movies
+            </a>
+            &middot;
+            <a href="<%= safe(context) %>/rentals">
+                My Rentals
+            </a>
+        </span>
+    </footer>
 
 </main>
 
-<!-- ==========================================
-     PAYMENT SEARCH AND FILTER
-========================================== -->
-
 <script>
+    (function () {
+        const rows = Array.from(
+            document.querySelectorAll('#payment-rows tr')
+        );
 
-    document.addEventListener(
-        "DOMContentLoaded",
-        function () {
+        const buttons = Array.from(
+            document.querySelectorAll('.cr-filter')
+        );
 
-            const searchInput =
-                document.getElementById(
-                    "paymentSearch"
-                );
+        const search = document.getElementById('payment-search');
+        const noMatch = document.getElementById('no-payment-match');
 
-            const statusFilter =
-                document.getElementById(
-                    "paymentStatusFilter"
-                );
+        if (!rows.length || !buttons.length || !search) {
+            return;
+        }
 
-            const paymentRows =
-                document.querySelectorAll(
-                    ".payment-row"
-                );
+        let active = 'all';
 
-            const visibleCount =
-                document.getElementById(
-                    "visiblePaymentCount"
-                );
+        function applyFilters() {
+            const term = search.value.trim().toLowerCase();
+            let visible = 0;
 
-            const noResults =
-                document.getElementById(
-                    "noMatchingPayments"
-                );
+            rows.forEach(function (row) {
+                const show =
+                    (active === 'all' || row.dataset.status === active) &&
+                    row.textContent.toLowerCase().includes(term);
 
-            function filterPayments() {
+                row.hidden = !show;
 
-                const searchValue =
-                    searchInput.value
-                        .trim()
-                        .toLowerCase();
+                if (show) {
+                    visible++;
+                }
+            });
 
-                const selectedStatus =
-                    statusFilter.value.toUpperCase();
+            if (noMatch) {
+                noMatch.hidden = visible !== 0;
+            }
+        }
 
-                let visible = 0;
+        buttons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                active = button.dataset.filter;
 
-                paymentRows.forEach(function (row) {
+                buttons.forEach(function (other) {
+                    const selected = other === button;
 
-                    const searchText =
-                        (row.dataset.search || "")
-                            .toLowerCase();
-
-                    const rowStatus =
-                        (row.dataset.status || "")
-                            .toUpperCase();
-
-                    const matchesSearch =
-                        searchText.includes(searchValue);
-
-                    const matchesStatus =
-                        selectedStatus === "ALL"
-                        || rowStatus === selectedStatus;
-
-                    const show =
-                        matchesSearch && matchesStatus;
-
-                    row.style.display =
-                        show ? "" : "none";
-
-                    if (show) {
-                        visible++;
-                    }
+                    other.classList.toggle('active', selected);
+                    other.setAttribute(
+                        'aria-pressed',
+                        String(selected)
+                    );
                 });
 
-                visibleCount.textContent = visible;
+                applyFilters();
+            });
+        });
 
-                noResults.style.display =
-                    paymentRows.length > 0
-                    && visible === 0
-                        ? "block"
-                        : "none";
-            }
-
-            searchInput.addEventListener(
-                "input",
-                filterPayments
-            );
-
-            statusFilter.addEventListener(
-                "change",
-                filterPayments
-            );
-
-        }
-    );
-
+        search.addEventListener('input', applyFilters);
+    })();
 </script>
 
 </body>

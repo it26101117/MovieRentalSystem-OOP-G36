@@ -3,6 +3,8 @@ package com.movierental.servlet;
 import com.movierental.algorithm.BubbleSort;
 import com.movierental.model.Movie;
 import com.movierental.service.MovieService;
+import com.movierental.service.RentalService;
+import com.movierental.model.Rental;
 import com.movierental.util.DataPathUtil;
 
 import jakarta.servlet.ServletException;
@@ -14,11 +16,14 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @WebServlet("/catalog")
 public class CatalogServlet extends HttpServlet {
 
     private MovieService movieService;
+    private RentalService rentalService;
 
     @Override
     public void init() throws ServletException {
@@ -30,6 +35,7 @@ public class CatalogServlet extends HttpServlet {
 
             movieService =
                     new MovieService(movieFilePath);
+            rentalService = new RentalService(DataPathUtil.getFilePath("rentals.txt"));
 
             System.out.println(
                     "CatalogServlet movies file: "
@@ -118,6 +124,20 @@ public class CatalogServlet extends HttpServlet {
         // SEND DATA TO JSP
         // =====================================================
 
+        // Show which movies this customer has already rented.
+        // CheckoutServlet still checks this on the server.
+        String userId = (String) session.getAttribute("userId");
+        if (userId == null || userId.isBlank()) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+        Set<String> rentedMovieIds = new HashSet<>();
+        for (Rental rental : rentalService.getRentalsByUser(userId)) {
+            if ("RENTED".equalsIgnoreCase(rental.getStatus())) {
+                rentedMovieIds.add(rental.getMovieId());
+            }
+        }
+        request.setAttribute("rentedMovieIds", rentedMovieIds);
         request.setAttribute("movies", movies);
 
 
@@ -126,8 +146,8 @@ public class CatalogServlet extends HttpServlet {
 
         request.getRequestDispatcher("/WEB-INF/views/catalog.jsp")
                 .forward(
-                request,
-                response
-        );
+                        request,
+                        response
+                );
     }
 }
