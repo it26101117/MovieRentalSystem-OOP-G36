@@ -41,15 +41,11 @@ public class AdminRentalServlet extends HttpServlet {
             String userFilePath =DataPathUtil.getFilePath("users.txt");
 
             rentalService =new RentalService(rentalFilePath );
-
             movieService =new MovieService(movieFilePath);
-
             userService =new UserService( userFilePath );
 
             System.out.println("AdminRentalServlet rentals file: " + rentalFilePath);
-
             System.out.println("AdminRentalServlet movies file: "  + movieFilePath );
-
             System.out.println("AdminRentalServlet users file: " + userFilePath);
 
 
@@ -62,8 +58,10 @@ public class AdminRentalServlet extends HttpServlet {
     // GET
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws ServletException, IOException {
         HttpSession session =request.getSession(false);
 
 
@@ -82,9 +80,7 @@ public class AdminRentalServlet extends HttpServlet {
         }
 
         List<Rental> allRentals =rentalService.getAllRentals();
-
         List<User> allUsers = userService .getAllUsers();
-
         List<Movie> allMovies = movieService.getAllMovies();
 
 
@@ -97,21 +93,15 @@ public class AdminRentalServlet extends HttpServlet {
         }
 
         // CREATE MOVIE LOOKUP MAP
-
-
         Map<String, Movie> movieMap =new HashMap<>();
 
         for (Movie movie : allMovies) {
             movieMap.put(movie.getMovieId(), movie);
         }
 
-
         int activeRentalCount =0;
-
         int returnedRentalCount =0;
-
         for (Rental rental : allRentals) {
-
             if ("RENTED".equalsIgnoreCase(rental.getStatus())) {
                 activeRentalCount++;
 
@@ -121,16 +111,13 @@ public class AdminRentalServlet extends HttpServlet {
         }
 
         String selectedStatus = request.getParameter("status" );
-
         if (selectedStatus == null|| selectedStatus.trim().isEmpty()) {
             selectedStatus ="all";
 
         }
 
         String search =request.getParameter("search");
-
         if (search == null) {
-
             search = "";
 
         }
@@ -138,7 +125,6 @@ public class AdminRentalServlet extends HttpServlet {
 
         // FILTER RENTALS
         List<Rental> filteredRentals =new ArrayList<>();
-
         for (Rental rental : allRentals) {
 
             // STATUS FILTER
@@ -158,31 +144,25 @@ public class AdminRentalServlet extends HttpServlet {
 
 
             User user =userMap.get( rental.getUserId() );
-
             Movie movie =movieMap.get( rental.getMovieId());
 
             // SEARCH MATCH
             boolean searchMatches =searchText.isEmpty();
-
             if (!searchText.isEmpty()) {
 
                 if (rental.getRentalId() != null && rental.getRentalId().toLowerCase().contains(searchText)) {
-
                     searchMatches =true;
 
                 }
 
                 if (rental.getUserId() != null && rental.getUserId().toLowerCase().contains(searchText)) {
-
                     searchMatches = true;
                 }
                 //get movie ID
                 if (rental.getMovieId() != null && rental.getMovieId().toLowerCase().contains(searchText)) {
-
                     searchMatches =true;
 
                 }
-
 
                 // CUSTOMER NAME / EMAIL
                 if (user != null) {
@@ -192,7 +172,6 @@ public class AdminRentalServlet extends HttpServlet {
                     }
 
                     if (user.getEmail() != null && user.getEmail().toLowerCase().contains(searchText)) {
-
                         searchMatches =true;
 
                     }
@@ -201,7 +180,6 @@ public class AdminRentalServlet extends HttpServlet {
                 // MOVIE TITLE
                 if (movie != null) {
                     if (movie.getTitle() != null && movie.getTitle().toLowerCase().contains(searchText)) {
-
                         searchMatches =true;
 
                     }
@@ -224,8 +202,7 @@ public class AdminRentalServlet extends HttpServlet {
         request.setAttribute("returnedRentalCount", returnedRentalCount);
         request.setAttribute("filteredCount", filteredRentals.size());
         request.getRequestDispatcher("/WEB-INF/views/admin-rentals.jsp"  )
-
-        .forward(request,response);
+                .forward(request,response);
 
     }
 }

@@ -1,6 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <%@ page import="java.util.List" %>
+<%@ page import="java.util.Set" %>
+<%@ page import="java.net.URLEncoder" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
 <%@ page import="com.movierental.model.Movie" %>
 <%@ page import="com.movierental.util.HtmlUtil" %>
 
@@ -14,6 +17,12 @@
                     request.getAttribute(
                             "movies"
                     );
+
+    Set<String> rentedMovieIds =
+            (Set<String>) request.getAttribute("rentedMovieIds");
+    if (rentedMovieIds == null) {
+        rentedMovieIds = java.util.Collections.emptySet();
+    }
 
 
     String selectedSort =
@@ -42,6 +51,8 @@
                             "role"
                     );
 
+    Object userId = session.getAttribute("userId");
+
 
     // SECURITY
 
@@ -50,6 +61,8 @@
             userName == null
                     ||
                     role == null
+                    ||
+                    userId == null
     ) {
 
         response.sendRedirect(
@@ -82,7 +95,7 @@
     // COUNTS
 
     int movieCount =  movies == null? 0
-                    : movies.size();
+            : movies.size();
 
 
     int availableMovieCount =
@@ -361,6 +374,23 @@
                     auto;
         }
 
+
+        /* Responsive customer navigation toggle */
+        .catalog-menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 8px;
+            margin-left: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            background: rgba(124, 58, 237, 0.12);
+            color: #e9ddff;
+            font-size: 21px;
+            cursor: pointer;
+        }
 
         .catalog-nav-link {
             position:
@@ -893,6 +923,54 @@
         }
 
 
+        /* Payment checkout information */
+        .catalog-payment-notice {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
+            padding: 17px 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(167, 139, 250, 0.24);
+            background: linear-gradient(110deg,
+            rgba(76, 29, 149, 0.19),
+            rgba(15, 23, 42, 0.8));
+        }
+
+        .catalog-payment-notice strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #ddd6fe;
+            font-size: 13px;
+        }
+
+        .catalog-payment-notice p {
+            margin: 0;
+            color: #aebbd0;
+            font-size: 11px;
+            line-height: 1.7;
+        }
+
+        .catalog-payment-notice a {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 37px;
+            padding: 0 13px;
+            border: 1px solid rgba(167, 139, 250, 0.35);
+            border-radius: 9px;
+            color: #ede9fe;
+            text-decoration: none;
+            white-space: nowrap;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        .catalog-payment-notice a:hover {
+            background: rgba(124, 58, 237, 0.24);
+        }
+
         /*
            CONTROLS
          */
@@ -1222,6 +1300,35 @@
                     nowrap;
         }
 
+
+        .catalog-shortcuts {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-wrap: wrap;
+        }
+
+        .my-payments-button {
+            min-height: 43px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 0 15px;
+            border-radius: 10px;
+            color: #ddd6fe;
+            text-decoration: none;
+            background: rgba(124, 58, 237, 0.13);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            font-size: 10px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .my-payments-button:hover {
+            color: #fff;
+            background: rgba(124, 58, 237, 0.25);
+        }
 
         /*
            RESULTS HEADER
@@ -1901,7 +2008,8 @@
         }
 
 
-        .rent-button:disabled {
+        .rent-button:disabled,
+        .rent-button.disabled {
             cursor:
                     not-allowed;
 
@@ -2101,9 +2209,43 @@
         max-width: 850px
         ) {
 
+            .catalog-navbar-inner {
+                position: relative;
+                gap: 12px;
+            }
+
+            .catalog-menu-toggle {
+                display: inline-flex;
+            }
+
             .catalog-nav-links {
-                display:
-                        none;
+                display: none;
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                right: 0;
+                z-index: 20;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 4px;
+                margin-left: 0;
+                padding: 12px;
+                border: 1px solid rgba(167, 139, 250, 0.24);
+                border-radius: 13px;
+                background: #101728;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            }
+
+            .catalog-nav-links.open {
+                display: flex;
+            }
+
+            .catalog-nav-link.active::after {
+                display: none;
+            }
+
+            .catalog-profile {
+                margin-left: 0;
             }
 
 
@@ -2125,7 +2267,7 @@
         max-width: 600px
         ) {
 
-            .catalog-profile-name {
+            .catalog-user-name {
                 display:
                         none;
             }
@@ -2134,6 +2276,23 @@
             .catalog-hero {
                 padding:
                         24px;
+            }
+
+            .catalog-payment-notice {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .catalog-payment-notice a {
+                width: 100%;
+            }
+
+            .catalog-shortcuts {
+                width: 100%;
+            }
+
+            .catalog-shortcuts a {
+                flex: 1;
             }
 
 
@@ -2228,9 +2387,19 @@
         </a>
 
 
+        <!-- MOBILE NAVIGATION -->
+        <button
+                type="button"
+                class="catalog-menu-toggle"
+                id="catalogMenuToggle"
+                aria-label="Open customer navigation"
+                aria-controls="catalogNavLinks"
+                aria-expanded="false"
+        >☰</button>
+
         <!-- LINKS -->
 
-        <nav class="catalog-nav-links">
+        <nav class="catalog-nav-links" id="catalogNavLinks" aria-label="Customer navigation">
 
 
             <a
@@ -2262,6 +2431,13 @@
 
             </a>
 
+
+            <a
+                    href="<%= ctx %>/payments"
+                    class="catalog-nav-link"
+            >
+                💳 My Payments
+            </a>
 
             <a
                     href="<%= ctx %>/recently-watched"
@@ -2341,7 +2517,7 @@
 
                 <div class="catalog-hero-badge">
 
-                     Customer Catalogue
+                    Customer Catalogue
 
                 </div>
 
@@ -2360,7 +2536,7 @@
 
                     Explore CineRent's movie collection,
                     compare ratings, discover new titles
-                    and rent your next movie in seconds.
+                    and choose a payment method before renting your next movie.
 
                 </p>
 
@@ -2418,71 +2594,49 @@
 
 
         <!--
-             ERRORS
+             ERRORS AND CHECKOUT STATUS
         -->
-
-        <%
-            if (
-                    "notfound".equalsIgnoreCase(
-                            error
-                    )
-            ) {
-        %>
-
-
-        <div
-                class="catalog-alert"
-                data-auto-hide
-        >
-
+        <% if ("notfound".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert" role="alert">
             The selected movie could not be found.
-
         </div>
-
-
-        <%
-        } else if (
-                "unavailable".equalsIgnoreCase(
-                        error
-                )
-        ) {
-        %>
-
-
-        <div
-                class="catalog-alert"
-                data-auto-hide
-        >
-
+        <% } else if ("unavailable".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert" role="alert">
             This movie currently has no available copies.
-
         </div>
-
-
-        <%
-        } else if (
-                "alreadyrented".equalsIgnoreCase(
-                        error
-                )
-        ) {
-        %>
-
-
-        <div
-                class="catalog-alert info"
-                data-auto-hide
-        >
-
-            You already have this movie rented.
-            Return it before renting it again.
-
+        <% } else if ("alreadyrented".equalsIgnoreCase(error)
+                || "alreadyactive".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert info" role="status">
+            You already have an active rental for this movie.
+            Return it before renting another copy.
         </div>
+        <% } else if ("paymentrequired".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert" role="alert">
+            Please complete checkout and payment before renting this movie.
+        </div>
+        <% } else if ("paymentpending".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert info" role="status">
+            Your bank transfer is awaiting administrator approval.
+            View its status under My Payments.
+        </div>
+        <% } else if ("paymentfailed".equalsIgnoreCase(error)) { %>
+        <div class="catalog-alert" role="alert">
+            Payment was not completed. Please try checkout again.
+        </div>
+        <% } %>
 
-
-        <%
-            }
-        %>
-
+        <!-- CHECKOUT EXPLANATION -->
+        <aside class="catalog-payment-notice" aria-label="How CineRent payments work">
+            <div>
+                <strong>💳 New: Rent &amp; Pay checkout</strong>
+                <p>
+                    Select a movie to open checkout. PayHere uses secure hosted payment,
+                    Bank Transfer requires administrator approval, and Demo Card is for testing only.
+                    Rental access starts after payment confirmation and activation.
+                </p>
+            </div>
+            <a href="<%= ctx %>/payments">View My Payments</a>
+        </aside>
 
         <!--
              CONTROLS
@@ -2550,7 +2704,7 @@
                                 : "" %>"
                 >
 
-                     Highest Rated
+                    Highest Rated
 
                 </a>
 
@@ -2565,7 +2719,7 @@
                                 : "" %>"
                 >
 
-                     Lowest Rated
+                    Lowest Rated
 
                 </a>
 
@@ -2573,16 +2727,15 @@
             </div>
 
 
-            <!-- RENTALS -->
-
-            <a
-                    href="<%= ctx %>/rentals"
-                    class="my-rentals-button"
-            >
-
-                 My Rentals
-
-            </a>
+            <!-- CUSTOMER SHORTCUTS -->
+            <div class="catalog-shortcuts">
+                <a href="<%= ctx %>/rentals" class="my-rentals-button">
+                    ▶ My Rentals
+                </a>
+                <a href="<%= ctx %>/payments" class="my-payments-button">
+                    💳 My Payments
+                </a>
+            </div>
 
 
         </section>
@@ -2678,6 +2831,16 @@
                     boolean available =
                             movie.getAvailableCopies()
                                     > 0;
+
+                    boolean validPrice =
+                            Double.isFinite(movie.getRentalPrice())
+                                    && movie.getRentalPrice() > 0;
+
+                    boolean alreadyRented = rentedMovieIds.contains(movie.getMovieId());
+                    boolean canCheckout = available && validPrice && !alreadyRented;
+                    String encodedMovieId = URLEncoder.encode(
+                            movie.getMovieId(), StandardCharsets.UTF_8
+                    );
             %>
 
 
@@ -2921,48 +3084,30 @@
                         </a>
 
 
-                        <!-- RENT -->
-
-                        <form
-                                method="post"
-                                action="<%= ctx %>/rentals"
+                        <!-- CHECKOUT: do not POST directly to /rentals -->
+                        <% if (canCheckout) { %>
+                        <a
+                                href="<%= ctx %>/checkout?movieId=<%= HtmlUtil.escape(encodedMovieId) %>"
+                                class="catalog-action-button rent-button"
+                                aria-label="Rent and pay for <%= HtmlUtil.escape(movie.getTitle()) %>"
                         >
-
-
-                            <input
-                                    type="hidden"
-                                    name="action"
-                                    value="rent"
-                            >
-
-
-                            <input
-                                    type="hidden"
-                                    name="movieId"
-                                    value="<%= HtmlUtil.escape(
-                                            movie.getMovieId()
-                                    ) %>"
-                            >
-
-
-                            <button
-                                    type="submit"
-                                    class="catalog-action-button rent-button"
-
-                                    <%= available
-                                            ? ""
-                                            : "disabled" %>
-                            >
-
-                                <%= available
-                                        ? "▶ Rent Movie"
-                                        : "Unavailable" %>
-
-                            </button>
-
-
-                        </form>
-
+                            💳 Rent &amp; Pay
+                        </a>
+                        <% } else if (alreadyRented) { %>
+                        <a href="<%= ctx %>/rentals"
+                           class="catalog-action-button rent-button"
+                           aria-label="View your existing rental for <%= HtmlUtil.escape(movie.getTitle()) %>">
+                            ✓ Already Rented
+                        </a>
+                        <% } else { %>
+                        <span
+                                class="catalog-action-button rent-button disabled"
+                                aria-disabled="true"
+                                title="<%= available ? "Rental price is unavailable" : "No copies available" %>"
+                        >
+                                <%= available ? "Price unavailable" : "Unavailable" %>
+                            </span>
+                        <% } %>
 
                     </div>
 
@@ -3019,7 +3164,7 @@
 
         <div>
 
-            Browse • Rent • Watch • Review
+            Browse • Pay • Rent • Watch • Review
 
         </div>
 
@@ -3040,6 +3185,42 @@
         "DOMContentLoaded",
         function () {
 
+            const menuButton = document.getElementById("catalogMenuToggle");
+            const menuLinks = document.getElementById("catalogNavLinks");
+
+            if (menuButton && menuLinks) {
+                function setMenuOpen(open) {
+                    menuLinks.classList.toggle("open", open);
+                    menuButton.setAttribute("aria-expanded", String(open));
+                    menuButton.setAttribute(
+                        "aria-label",
+                        open ? "Close customer navigation" : "Open customer navigation"
+                    );
+                    menuButton.textContent = open ? "✕" : "☰";
+                }
+
+                menuButton.addEventListener("click", function () {
+                    setMenuOpen(menuButton.getAttribute("aria-expanded") !== "true");
+                });
+
+                document.addEventListener("click", function (event) {
+                    if (!menuButton.contains(event.target) && !menuLinks.contains(event.target)) {
+                        setMenuOpen(false);
+                    }
+                });
+
+                document.addEventListener("keydown", function (event) {
+                    if (event.key === "Escape") {
+                        setMenuOpen(false);
+                    }
+                });
+
+                window.addEventListener("resize", function () {
+                    if (window.innerWidth > 850) {
+                        setMenuOpen(false);
+                    }
+                });
+            }
 
             const searchInput =
                 document.getElementById(
