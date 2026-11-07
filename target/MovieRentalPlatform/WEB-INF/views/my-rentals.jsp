@@ -934,7 +934,7 @@
             %>
             <article class="mr-payment">
                 <div class="mr-payment-top">
-                        < span class="mr-meta">
+                        <span class="mr-meta">
                             Payment #<%= esc(p.getPaymentId()) %>
                         </span>
                     <span class="mr-badge <%= badge %>">
