@@ -55,27 +55,17 @@ public class ReviewService {
         return reviews;
     }
 
-    public List<Review> getReviewsByMovie(
-            String movieId
-    ) throws IOException {
+    public List<Review> getReviewsByMovie(   String movieId ) throws IOException {
 
         List<Review> result =new ArrayList<>();
 
+        for ( Review review :getAllReviews()  ) {
 
 
-        for (
-                Review review :
-                getAllReviews()
-        ) {
+            if (    review.getMovieId()   .equals(movieId)   ) {
 
-            if (
-                    review.getMovieId()
-                            .equals(movieId)
-            ) {
+                result.add( review  );
 
-                result.add(
-                        review
-                );
             }
         }
 
@@ -84,26 +74,15 @@ public class ReviewService {
     }
 
 
-    // =========================================================
+
     // FIND USER REVIEW
-    // =========================================================
 
-    public Review getUserReviewForMovie(
-            String userId,
-            String movieId
-    ) throws IOException {
+    public Review getUserReviewForMovie( String userId,String movieId) throws IOException {
 
-        for (
-                Review review :
-                getAllReviews()
-        ) {
+        for ( Review review :  getAllReviews()   ) {
 
-            if (
-                    review.getUserId()
-                            .equals(userId)
-                            &&
-                            review.getMovieId()
-                                    .equals(movieId)
+            if (  review.getUserId() .equals(userId)&&review.getMovieId() .equals(movieId)
+
             ) {
 
                 return review;
@@ -114,45 +93,25 @@ public class ReviewService {
         return null;
     }
 
-
-    // =========================================================
     // UPDATE REVIEW
-    // =========================================================
-
-    public boolean updateReview(
-            Review updatedReview
-    ) throws IOException {
-
-        List<Review> reviews =
-                getAllReviews();
 
 
-        boolean found =
-                false;
+    public boolean updateReview( Review updatedReview ) throws IOException {
+
+        List<Review> reviews = getAllReviews();
+
+        boolean found =   false;
+
+        for (  int i = 0;  i < reviews.size(); i++ ) {
 
 
-        for (
-                int i = 0;
-                i < reviews.size();
-                i++
-        ) {
+            Review review =reviews.get(i);
 
-            Review review =
-                    reviews.get(i);
+            if (  review.getReviewId()   .equals(  updatedReview .getReviewId() )
 
-
-            if (
-                    review.getReviewId()
-                            .equals(
-                                    updatedReview
-                                            .getReviewId()
-                            )
             ) {
 
-                reviews.set(
-                        i,
-                        updatedReview
-                );
+                reviews.set(  i,  updatedReview    );
 
                 found = true;
 
@@ -163,9 +122,7 @@ public class ReviewService {
 
         if (found) {
 
-            saveAllReviews(
-                    reviews
-            );
+            saveAllReviews( reviews );
         }
 
 
@@ -173,51 +130,31 @@ public class ReviewService {
     }
 
 
-    // =========================================================
     // DELETE REVIEW
-    // =========================================================
-
-    public boolean deleteReview(
-            String reviewId
-    ) throws IOException {
-
-        List<Review> reviews =
-                getAllReviews();
 
 
-        boolean removed =
-                reviews.removeIf(
-                        review ->
-                                review.getReviewId()
-                                        .equals(reviewId)
-                );
+    public boolean deleteReview( String reviewId ) throws IOException {
 
+        List<Review> reviews =getAllReviews();
+
+        boolean removed = reviews.removeIf(review ->
+                        review.getReviewId() .equals(reviewId) );
 
         if (removed) {
 
-            saveAllReviews(
-                    reviews
-            );
+            saveAllReviews(  reviews  );
+
         }
-
-
         return removed;
     }
 
 
-    // =========================================================
     // AVERAGE RATING
-    // =========================================================
 
-    public double calculateAverageRating(
-            String movieId
-    ) throws IOException {
 
-        List<Review> reviews =
-                getReviewsByMovie(
-                        movieId
-                );
+    public double calculateAverageRating( String movieId) throws IOException {
 
+        List<Review> reviews =getReviewsByMovie(  movieId  );
 
         if (reviews.isEmpty()) {
 
@@ -225,125 +162,83 @@ public class ReviewService {
         }
 
 
-        int total =
-                0;
-
+        int total =0;
 
         for (Review review : reviews) {
 
-            total +=
-                    review.getRating();
+            total +=review.getRating();
         }
 
-
-        double average =
-                (double) total
-                        /
-                        reviews.size();
-
+        double average = (double) total /reviews.size();
 
         // Round to 1 decimal
-        return Math.round(
-                average * 10.0
-        ) / 10.0;
+        return Math.round(average * 10.0   ) / 10.0;
+
     }
 
-
-    // =========================================================
     // GENERATE REVIEW ID
-    // =========================================================
 
     public String generateNextReviewId()
             throws IOException {
 
-        int highest =
-                0;
+        int highest =0;
 
+        for (  Review review : getAllReviews()   ) {
 
-        for (
-                Review review :
-                getAllReviews()
-        ) {
+            String id =review.getReviewId();
 
-            String id =
-                    review.getReviewId();
-
-
-            if (
-                    id != null
-                            &&
-                            id.startsWith("REV")
-            ) {
+            if (  id != null  &&  id.startsWith("REV")   ) {
 
                 try {
 
-                    int number =
-                            Integer.parseInt(
-                                    id.substring(3)
-                            );
-
+                    int number = Integer.parseInt( id.substring(3)   );
 
                     if (number > highest) {
 
-                        highest =
-                                number;
+                        highest = number;
+
                     }
 
-                } catch (
-                        NumberFormatException ignored
-                ) {
+                } catch (  NumberFormatException ignored ) {
+
+
                 }
             }
         }
 
 
-        return String.format(
-                "REV%03d",
-                highest + 1
-        );
+        return String.format("REV%03d",highest + 1 );
+
     }
 
-
-    // =========================================================
     // SAVE ALL REVIEWS
-    // =========================================================
 
-    private void saveAllReviews(
-            List<Review> reviews
-    ) throws IOException {
 
-        List<String> lines =
-                new ArrayList<>();
+    private void saveAllReviews( List<Review> reviews) throws IOException {
 
+        List<String> lines = new ArrayList<>();
 
         for (Review review : reviews) {
 
-            lines.add(
-                    convertReviewToLine(
-                            review
-                    )
+            lines.add( convertReviewToLine(    review )
+
             );
         }
 
 
-        FileHandler.writeAllLines(
-                reviewFilePath,
-                lines
-        );
+        FileHandler.writeAllLines(reviewFilePath,   lines );
+
     }
 
-
-    // =========================================================
     // REVIEW -> FILE
-    // =========================================================
 
-    private String convertReviewToLine(
-            Review review
-    ) {
 
-        return clean(
-                review.getReviewId()
-        )
+    private String convertReviewToLine(  Review review)
+
+     {
+
+        return clean( review.getReviewId()   )
+
                 + "|"
                 + clean(
                 review.getUserId()
@@ -365,22 +260,17 @@ public class ReviewService {
     }
 
 
-    // =========================================================
-    // FILE -> REVIEW
-    // =========================================================
 
-    private Review convertLineToReview(
-            String line
-    ) {
+    // FILE -> REVIEW
+
+
+    private Review convertLineToReview(String line ) {
+
+
 
         try {
 
-            String[] data =
-                    line.split(
-                            "\\|",
-                            -1
-                    );
-
+            String[] data =line.split("\\|",-1 );
 
             if (data.length != 6) {
 
@@ -388,17 +278,7 @@ public class ReviewService {
             }
 
 
-            return new Review(
-                    data[0],
-                    data[1],
-                    data[2],
-                    Integer.parseInt(
-                            data[3]
-                    ),
-                    data[4],
-                    data[5]
-            );
-
+            return new Review(data[0],data[1],  data[2],Integer.parseInt( data[3]), data[4],data[5]);
 
         } catch (Exception e) {
 
@@ -407,19 +287,13 @@ public class ReviewService {
     }
 
 
-    private String clean(
-            String value
-    ) {
+    private String clean( String value) {
 
         if (value == null) {
-
             return "";
         }
 
+        return value.replace("|",  " " );
 
-        return value.replace(
-                "|",
-                " "
-        );
     }
 }
