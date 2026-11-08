@@ -2,16 +2,9 @@ package com.movierental.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import java.time.format.DateTimeFormatter; //convert date as readble format
+import java.util.Locale; //control number and date formatting conversion
 
-/**
- * Represents a CineRent movie-rental payment.
- *
- * Supported methods: demo card, bank transfer, and PayHere.
- * The gateway payment ID is retained so PaymentService can handle
- * repeated PayHere notifications safely.
- */
 public class Payment {
 
     // Payment methods
@@ -89,6 +82,7 @@ public class Payment {
         return amount;
     }
 
+    //validate before assign payment amount
     public void setAmount(BigDecimal amount) {
         if (amount == null) {
             throw new IllegalArgumentException("Payment amount cannot be null.");

@@ -1,5 +1,6 @@
 package com.movierental.model;
 
+//inheritence
 public class Admin extends User {
     private String adminLevel;
 
@@ -8,7 +9,7 @@ public class Admin extends User {
     }
     public Admin(String userId,String name,String email,String password, String adminLevel){
         super(userId,name,email, password );
-        this.adminLevel = adminLevel;
+        this.adminLevel = adminLevel; //encapsulation
     }
     public String getAdminLevel() {
         return adminLevel;
@@ -17,7 +18,7 @@ public class Admin extends User {
         this.adminLevel = adminLevel;
     }
     @Override
-    public String getRole() {
+    public String getRole() { //polymorphism
         return "ADMIN";
     }
 }

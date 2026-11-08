@@ -81,8 +81,6 @@ public class AdminReviewServlet extends HttpServlet {
         }
 
 
-
-
         List<Review> allReviews =   reviewService.getAllReviews();
 
         List<User> users =userService.getAllUsers();
