@@ -3,8 +3,8 @@ com\movierental\MovieRentalApplication.class
 com\movierental\util\FileHandler.class
 com\movierental\model\Movie.class
 com\movierental\util\DataPathUtil.class
-com\movierental\servlet\CheckoutServlet.class
 com\movierental\servlet\AdminRentalServlet.class
+com\movierental\servlet\PayHereNotifyServlet.class
 com\movierental\model\Review.class
 com\movierental\model\Customer.class
 com\movierental\service\UserService.class
@@ -20,6 +20,7 @@ com\movierental\controller\HomeController.class
 com\movierental\model\Payment.class
 com\movierental\model\Rental.class
 com\movierental\servlet\AdminCustomerServlet.class
+com\movierental\service\PayHereGateway.class
 com\movierental\service\WatchHistoryService.class
 com\movierental\service\PaymentService.class
 com\movierental\servlet\MovieServlet.class

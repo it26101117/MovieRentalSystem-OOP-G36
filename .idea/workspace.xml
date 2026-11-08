@@ -4,7 +4,35 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8fdedb63-1391-4309-8a94-780ccb92259f" name="Changes" comment="" />
+    <list default="true" id="8fdedb63-1391-4309-8a94-780ccb92259f" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/movies.txt" beforeDir="false" afterPath="$PROJECT_DIR$/data/movies.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/posters/M001.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/rentals.txt" beforeDir="false" afterPath="$PROJECT_DIR$/data/rentals.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/watch_history.txt" beforeDir="false" afterPath="$PROJECT_DIR$/data/watch_history.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/PaymentServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/movierental/servlet/PaymentServlet.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform.war" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform.war" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform.war.original" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform.war.original" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/algorithm/BubbleSort.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/algorithm/BubbleSort.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/service/WatchHistoryService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/service/WatchHistoryService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminCustomerServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminCustomerServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminRentalServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/AdminRentalServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/CatalogServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/CatalogServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/RecentlyWatchedServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/RecentlyWatchedServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/RentalServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/classes/com/movierental/servlet/RentalServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/catalog.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/catalog.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/recently-watched.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/recently-watched.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/reviews.jsp" beforeDir="false" afterPath="$PROJECT_DIR$/target/MovieRentalPlatform/WEB-INF/views/reviews.jsp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/algorithm/BubbleSort.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/algorithm/BubbleSort.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/service/WatchHistoryService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/service/WatchHistoryService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminCustomerServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminCustomerServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminRentalServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/AdminRentalServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/CatalogServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/CatalogServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/RecentlyWatchedServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/RecentlyWatchedServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/movierental/servlet/RentalServlet.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/movierental/servlet/RentalServlet.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -111,7 +139,7 @@
     &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;#63 on rental&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;rental&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/ASUS/Desktop/Movie Rental System/MovieRentalPlatform&quot;,

@@ -361,7 +361,9 @@ public class PaymentServlet extends HttpServlet {
     private static String rentalToken(HttpSession session) {
         synchronized (session) {
             Object existing = session.getAttribute("rentalCsrfToken");
+
             if (existing instanceof String && !((String) existing).isBlank())
+
                 return (String) existing;
             byte[] random = new byte[32];
             RANDOM.nextBytes(random);
