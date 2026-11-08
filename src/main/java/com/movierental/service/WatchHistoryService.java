@@ -20,7 +20,8 @@ public class WatchHistoryService {
         this.movieService = movieService;
 
     }
-    
+
+
 
     // RECORD WATCHED MOVIE
 
