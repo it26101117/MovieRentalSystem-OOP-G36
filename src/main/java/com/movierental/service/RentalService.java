@@ -98,14 +98,8 @@ public class RentalService {
         }
         return false;
     }
-
-    public boolean hasReturnedRental(
-            String userId,
-            String movieId
-    ) throws IOException {
-
+    public boolean hasReturnedRental(String userId, String movieId) throws IOException {
         List<Rental> rentals = getAllRentals();
-
         for (Rental rental : rentals) {
 
             boolean sameUser = rental.getUserId() != null && rental.getUserId().equals(userId);

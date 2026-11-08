@@ -1,4 +1,3 @@
-
 package com.movierental.service;
 
 import com.movierental.model.Payment;
@@ -19,625 +18,410 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * CineRent payment storage and PayHere notification processing.
+ *
+ * Uses payments.txt for the existing academic project. The static lock
+ * protects one running JVM only; use a transactional database for production.
+ */
 public class PaymentService {
-
-
-    // PAYMENT METHODS
-
 
     public static final String DEMO_CARD = "DEMO_CARD";
     public static final String BANK_TRANSFER = "BANK_TRANSFER";
-
-
-    // PAYMENT STATUSES
-
+    public static final String PAYHERE = "PAYHERE";
 
     public static final String PENDING = "PENDING";
     public static final String PAID = "PAID";
     public static final String FAILED = "FAILED";
     public static final String REJECTED = "REJECTED";
+    public static final String CHARGEBACK = "CHARGEBACK";
 
-    // Synchronizes access between instances
-    // inside the same Java application process.
     private static final Object FILE_LOCK = new Object();
-
     private final Path paymentFilePath;
 
-
-    // CONSTRUCTOR
-
-
     public PaymentService(String filePath) {
-
-        if (filePath == null || filePath.trim().isEmpty()) {
-            throw new IllegalArgumentException("Payment file path cannot be empty.");
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("Payment file path is required");
         }
-
-        this.paymentFilePath = Paths.get(filePath).toAbsolutePath().normalize();
-
-        initializeStorage();
-    }
-
-
-    // INITIALIZE STORAGE
-
-
-    private void initializeStorage() {
-
+        paymentFilePath = Paths.get(filePath).toAbsolutePath().normalize();
         synchronized (FILE_LOCK) {
-
             try {
-
-                Path parent = paymentFilePath.getParent();
-
-                Files.createDirectories(parent);
-
+                Files.createDirectories(paymentFilePath.getParent());
                 if (Files.notExists(paymentFilePath)) {
                     Files.createFile(paymentFilePath);
                 }
-
-            } catch (IOException e) {
-
-                throw new IllegalStateException("Unable to initialize payment storage.", e);
+            } catch (IOException ex) {
+                throw new IllegalStateException("Cannot initialize payment storage", ex);
             }
         }
     }
 
-
-    // CREATE NEW PAYMENT
-
-
-    public Payment createPendingPayment(String userId, String movieId, BigDecimal amount, String paymentMethod) {
-
-        String validUserId = validateField(userId, "User ID");
-
-        String validMovieId = validateField(movieId, "Movie ID");
-
-        String validMethod = validatePaymentMethod(paymentMethod);
-
-        if (amount == null || amount.signum() <= 0) {
-            throw new IllegalArgumentException("Payment amount must be greater than zero.");
+    /** Create an order. Do not grant a rental at this stage. */
+    public Payment createPendingPayment(String userId, String movieId,
+                                        BigDecimal amount, String paymentMethod) {
+        String validUserId = safeField(userId, "User ID");
+        String validMovieId = safeField(movieId, "Movie ID");
+        String method = safeField(paymentMethod, "Payment method")
+                .toUpperCase(Locale.ROOT);
+        if (!DEMO_CARD.equals(method) && !BANK_TRANSFER.equals(method)
+                && !PAYHERE.equals(method)) {
+            throw new IllegalArgumentException("Unsupported payment method: " + method);
         }
-
-        BigDecimal validAmount = amount.setScale(2, RoundingMode.UNNECESSARY);
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be positive");
+        }
+        BigDecimal normalizedAmount = amount.setScale(2, RoundingMode.UNNECESSARY);
 
         synchronized (FILE_LOCK) {
-
             List<Payment> payments = readPayments();
-
             Payment payment = new Payment();
-
-            payment.setPaymentId(generatePaymentId(payments));
-
+            payment.setPaymentId(nextPaymentId(payments));
             payment.setUserId(validUserId);
             payment.setMovieId(validMovieId);
-            payment.setAmount(validAmount);
-            payment.setPaymentMethod(validMethod);
+            payment.setAmount(normalizedAmount);
+            payment.setPaymentMethod(method);
             payment.setPaymentStatus(PENDING);
             payment.setRentalId("");
+            payment.setGatewayPaymentId("");
             payment.setCreatedAt(LocalDateTime.now());
-
             payments.add(payment);
-
-            savePayments(payments);
-
+            writePayments(payments);
             return payment;
         }
     }
 
-    // GET ALL PAYMENTS
-
-
     public List<Payment> getAllPayments() {
-
         synchronized (FILE_LOCK) {
-
-            List<Payment> payments = readPayments();
-
-            payments.sort(Comparator.comparing(Payment::getCreatedAt).reversed());
-
-            return payments;
+            return newestFirst(readPayments());
         }
     }
 
-
-    // GET PAYMENT BY ID
-
-
     public Payment getPaymentById(String paymentId) {
-
+        if (paymentId == null) return null;
         synchronized (FILE_LOCK) {
-
             for (Payment payment : readPayments()) {
-
-                if (payment.getPaymentId().equals(paymentId)) {
-                    return payment;
-                }
+                if (paymentId.equals(payment.getPaymentId())) return payment;
             }
-
             return null;
         }
     }
 
-
-    // GET PAYMENTS BY USER
-
-
     public List<Payment> getPaymentsByUser(String userId) {
-
         List<Payment> result = new ArrayList<>();
-
         synchronized (FILE_LOCK) {
-
             for (Payment payment : readPayments()) {
-
-                if (payment.getUserId().equals(userId)) {
+                if (userId != null && userId.equals(payment.getUserId())) {
                     result.add(payment);
                 }
             }
         }
-
-        result.sort(Comparator.comparing(Payment::getCreatedAt).reversed());
-
-        return result;
+        return newestFirst(result);
     }
-
-
-    // GET PAYMENTS BY STATUS
-
-
-    public List<Payment> getPaymentsByStatus(String status) {
-
-        List<Payment> result = new ArrayList<>();
-
-        if (status == null) {
-            return result;
-        }
-
-        String normalizedStatus = status.trim().toUpperCase(Locale.ROOT);
-
-        synchronized (FILE_LOCK) {
-
-            for (Payment payment : readPayments()) {
-
-                if (payment.getPaymentStatus()
-                        .equalsIgnoreCase(normalizedStatus)) {
-
-                    result.add(payment);
-                }
-            }
-        }
-
-        result.sort(
-                Comparator.comparing(Payment::getCreatedAt).reversed());
-
-        return result;
-    }
-
-
-    // GET PAYMENTS BY MOVIE
-
 
     public List<Payment> getPaymentsByMovie(String movieId) {
-
         List<Payment> result = new ArrayList<>();
-
         synchronized (FILE_LOCK) {
-
             for (Payment payment : readPayments()) {
-
-                if (payment.getMovieId().equals(movieId)) {
+                if (movieId != null && movieId.equals(payment.getMovieId())) {
                     result.add(payment);
                 }
             }
         }
-
-        return result;
+        return newestFirst(result);
     }
 
+    public List<Payment> getPaymentsByStatus(String status) {
+        List<Payment> result = new ArrayList<>();
+        if (status == null) return result;
+        synchronized (FILE_LOCK) {
+            for (Payment payment : readPayments()) {
+                if (status.equalsIgnoreCase(payment.getPaymentStatus())) {
+                    result.add(payment);
+                }
+            }
+        }
+        return newestFirst(result);
+    }
 
-    // MARK PAYMENT AS PAID
-
-
+    /** For Demo Card testing and admin-approved Bank Transfers only. */
     public Payment markPaymentPaid(String paymentId) {
-
-        return updatePaymentStatus(paymentId, PAID);
+        return updateNonGatewayStatus(paymentId, PAID);
     }
-
-
-    // MARK PAYMENT AS FAILED
-
 
     public Payment markPaymentFailed(String paymentId) {
-
-        return updatePaymentStatus(paymentId, FAILED);
+        return updateNonGatewayStatus(paymentId, FAILED);
     }
-
-
-    // REJECT BANK TRANSFER
-
 
     public Payment rejectPayment(String paymentId) {
-
-        return updatePaymentStatus(paymentId, REJECTED);
+        return updateNonGatewayStatus(paymentId, REJECTED);
     }
 
-
-    // UPDATE PAYMENT STATUS
-
-
-    private Payment updatePaymentStatus(String paymentId, String newStatus) {
-
+    private Payment updateNonGatewayStatus(String paymentId, String nextStatus) {
         synchronized (FILE_LOCK) {
-
             List<Payment> payments = readPayments();
-
             for (Payment payment : payments) {
-
-                if (!payment.getPaymentId().equals(paymentId)) {
-                    continue;
+                if (!payment.getPaymentId().equals(paymentId)) continue;
+                // Critical: PayHere must NEVER be marked paid from admin/demo endpoints.
+                if (PAYHERE.equalsIgnoreCase(payment.getPaymentMethod())) {
+                    throw new IllegalStateException(
+                            "PayHere status requires a verified gateway notification");
                 }
-
-                String currentStatus = payment.getPaymentStatus();
-
-                // Repeated confirmation should not
-                // change the same payment again.
-                if (currentStatus.equals(newStatus)) {
-                    return payment;
+                String current = payment.getPaymentStatus();
+                if (nextStatus.equals(current)) return payment;
+                if (!PENDING.equals(current)) {
+                    throw new IllegalStateException("Payment already finalized: " + current);
                 }
-
-                // A completed, failed or rejected
-                // payment cannot be changed again.
-                if (!PENDING.equals(currentStatus)) {
-
-                    throw new IllegalStateException("Payment is already finalized: " + currentStatus);
-                }
-
-                payment.setPaymentStatus(newStatus);
-
-                savePayments(payments);
-
+                payment.setPaymentStatus(nextStatus);
+                writePayments(payments);
                 return payment;
             }
-
             throw new IllegalArgumentException("Payment not found: " + paymentId);
         }
     }
 
-    // LINK RENTAL TO PAID PAYMENT
+    /**
+     * Call ONLY after PayHereNotifyServlet verifies merchant_id and md5sig.
+     * Also checks the stored order amount, currency, method and gateway ID.
+     * PayHere status codes: 2=success, 0=pending, -1=cancelled,
+     * -2=failed, -3=chargeback.
+     */
+    public Payment applyVerifiedPayHereNotification(
+            String orderId, String gatewayPaymentId, BigDecimal reportedAmount,
+            String currency, int statusCode) {
 
-
-    public Payment attachRentalId(String paymentId, String rentalId) {
-
-        String validRentalId = validateField(rentalId, "Rental ID");
+        if (orderId == null || !orderId.matches("P\\d+")) {
+            throw new IllegalArgumentException("Invalid PayHere order ID");
+        }
+        if (reportedAmount == null || reportedAmount.signum() <= 0) {
+            throw new IllegalArgumentException("Invalid PayHere amount");
+        }
+        if (!"LKR".equals(currency)) {
+            throw new IllegalArgumentException("Unexpected PayHere currency");
+        }
+        if (statusCode != 2 && statusCode != 0 && statusCode != -1
+                && statusCode != -2 && statusCode != -3) {
+            throw new IllegalArgumentException("Unknown PayHere status: " + statusCode);
+        }
+        String transactionId = gatewayPaymentId == null ? "" : gatewayPaymentId.trim();
+        if (!transactionId.isEmpty() && !transactionId.matches("[A-Za-z0-9_-]{1,128}")) {
+            throw new IllegalArgumentException("Invalid PayHere transaction ID");
+        }
+        if ((statusCode == 2 || statusCode == -3) && transactionId.isEmpty()) {
+            throw new IllegalArgumentException("Missing PayHere transaction ID");
+        }
 
         synchronized (FILE_LOCK) {
-
             List<Payment> payments = readPayments();
-
-            Payment selectedPayment = null;
-
             for (Payment payment : payments) {
-
-                if (payment.getPaymentId().equals(paymentId)) {
-                    selectedPayment = payment;
-                    break;
+                if (!orderId.equals(payment.getPaymentId())) continue;
+                if (!PAYHERE.equalsIgnoreCase(payment.getPaymentMethod())) {
+                    throw new IllegalArgumentException("Order is not a PayHere payment");
                 }
-            }
-
-            if (selectedPayment == null) {
-
-                throw new IllegalArgumentException("Payment not found: " + paymentId);
-            }
-
-            if (!PAID.equals(selectedPayment.getPaymentStatus())) {
-
-                throw new IllegalStateException("Only paid payments can be linked to rentals.");
-            }
-
-            String existingRentalId = selectedPayment.getRentalId();
-
-            if (existingRentalId != null
-                    && !existingRentalId.isEmpty()) {
-
-                if (existingRentalId.equals(validRentalId)) {
-                    return selectedPayment;
+                if (payment.getAmount().compareTo(reportedAmount) != 0) {
+                    throw new IllegalArgumentException("PayHere amount mismatch");
                 }
 
-                throw new IllegalStateException("Payment is already linked to another rental.");
-            }
-
-            // Do not allow a rental ID to be
-            // assigned to multiple payments.
-            for (Payment payment : payments) {
-
-                if (validRentalId.equals(payment.getRentalId())) {
-
-                    throw new IllegalStateException("Rental is already linked to a payment.");
+                String storedTransactionId = payment.getGatewayPaymentId();
+                if (storedTransactionId == null) storedTransactionId = "";
+                if (!storedTransactionId.isEmpty() && !transactionId.isEmpty()
+                        && !storedTransactionId.equals(transactionId)) {
+                    throw new IllegalArgumentException("PayHere transaction ID mismatch");
                 }
+
+                String current = payment.getPaymentStatus();
+                String next = current;
+                if (statusCode == 2) {
+                    if (PENDING.equals(current)) next = PAID;
+                    else if (!PAID.equals(current)) {
+                        throw new IllegalStateException(
+                                "Cannot confirm a finalized payment: " + current);
+                    }
+                } else if (statusCode == -3) {
+                    if (PAID.equals(current) || CHARGEBACK.equals(current)) {
+                        next = CHARGEBACK;
+                    } else {
+                        throw new IllegalStateException(
+                                "Chargeback received for a non-paid order: " + current);
+                    }
+                } else if ((statusCode == -1 || statusCode == -2)
+                        && PENDING.equals(current)) {
+                    next = FAILED;
+                }
+                // A stale pending/failure notification cannot downgrade PAID.
+                boolean idChanged = storedTransactionId.isEmpty() && !transactionId.isEmpty();
+                if (!current.equals(next) || idChanged) {
+                    payment.setPaymentStatus(next);
+                    if (idChanged) payment.setGatewayPaymentId(transactionId);
+                    writePayments(payments);
+                }
+                return payment;
             }
-
-            selectedPayment.setRentalId(validRentalId);
-
-            savePayments(payments);
-
-            return selectedPayment;
+            throw new IllegalArgumentException("Unknown PayHere order: " + orderId);
         }
     }
 
-    // CALCULATE TOTAL PAID AMOUNT
-
+    /** Link one confirmed payment to one rental. Safe to repeat with same rental ID. */
+    public Payment attachRentalId(String paymentId, String rentalId) {
+        String validRentalId = safeField(rentalId, "Rental ID");
+        synchronized (FILE_LOCK) {
+            List<Payment> payments = readPayments();
+            Payment selected = null;
+            for (Payment payment : payments) {
+                if (paymentId != null && paymentId.equals(payment.getPaymentId())) {
+                    selected = payment;
+                    break;
+                }
+            }
+            if (selected == null) throw new IllegalArgumentException("Payment not found");
+            if (!PAID.equals(selected.getPaymentStatus())) {
+                throw new IllegalStateException("Rental requires a paid payment");
+            }
+            if (selected.hasRental()) {
+                if (validRentalId.equals(selected.getRentalId())) return selected;
+                throw new IllegalStateException("Payment already linked to a rental");
+            }
+            for (Payment payment : payments) {
+                if (validRentalId.equals(payment.getRentalId())) {
+                    throw new IllegalStateException("Rental already linked to a payment");
+                }
+            }
+            selected.setRentalId(validRentalId);
+            writePayments(payments);
+            return selected;
+        }
+    }
 
     public BigDecimal getTotalPaidAmount() {
-
         BigDecimal total = BigDecimal.ZERO;
-
         synchronized (FILE_LOCK) {
-
             for (Payment payment : readPayments()) {
-
                 if (PAID.equals(payment.getPaymentStatus())) {
-
                     total = total.add(payment.getAmount());
                 }
             }
         }
-
         return total.setScale(2, RoundingMode.HALF_UP);
     }
 
-
-    // COUNT PAYMENTS
-
-
     public int getTotalPaymentCount() {
-
         synchronized (FILE_LOCK) {
             return readPayments().size();
         }
     }
 
     public int getPendingPaymentCount() {
-
         return getPaymentsByStatus(PENDING).size();
     }
 
     public int getPaidPaymentCount() {
-
         return getPaymentsByStatus(PAID).size();
     }
 
-
-    // GENERATE UNIQUE PAYMENT ID
-
-
-    private String generatePaymentId(List<Payment> payments) {
-
-        int highestNumber = 0;
-
-        for (Payment payment : payments) {
-
-            String id = payment.getPaymentId();
-
-            if (id == null || !id.matches("P\\d+")) {
-                continue;
-            }
-
-            try {
-
-                int number = Integer.parseInt(id.substring(1));
-
-                highestNumber = Math.max(highestNumber, number);
-
-            } catch (NumberFormatException ignored) {
-                // Ignore IDs outside integer range.
-            }
-        }
-
-        return String.format(Locale.ROOT, "P%04d", highestNumber + 1);
-    }
-
-
-    // READ PAYMENTS FROM FILE
-
-
-    private List<Payment> readPayments() {
-
-        List<Payment> payments = new ArrayList<>();
-
-        try {
-
-            List<String> lines = Files.readAllLines(paymentFilePath, StandardCharsets.UTF_8);
-
-            int lineNumber = 0;
-
-            for (String line : lines) {
-
-                lineNumber++;
-
-                if (line.trim().isEmpty()) {
-                    continue;
-                }
-
-                String[] data = line.split("\\|", -1);
-
-                if (data.length != 8) {
-
-                    throw new IllegalStateException("Invalid payment record at line " + lineNumber);
-                }
-
-                Payment payment = new Payment();
-
-                payment.setPaymentId(data[0]);
-                payment.setUserId(data[1]);
-                payment.setMovieId(data[2]);
-
-                payment.setAmount(new BigDecimal(data[3]));
-
-                payment.setPaymentMethod(data[4]);
-                payment.setPaymentStatus(data[5]);
-                payment.setRentalId(data[6]);
-
-                payment.setCreatedAt(LocalDateTime.parse(data[7]));
-
-                payments.add(payment);
-            }
-
-        } catch (IOException e) {
-
-            throw new IllegalStateException("Unable to read payment records.", e);
-
-        } catch (RuntimeException e) {
-
-            throw new IllegalStateException("Unable to parse payment records.", e);
-        }
-
+    private static List<Payment> newestFirst(List<Payment> payments) {
+        payments.sort(Comparator.comparing(Payment::getCreatedAt).reversed());
         return payments;
     }
 
-
-    // SAVE PAYMENTS TO FILE
-
-
-    private void savePayments(
-            List<Payment> payments
-    ) {
-
-        List<String> lines = new ArrayList<>();
-
+    private static String nextPaymentId(List<Payment> payments) {
+        int highest = 0;
         for (Payment payment : payments) {
-
-            String rentalId = payment.getRentalId();
-
-            if (rentalId == null) {
-                rentalId = "";
-            }
-
-            String line = String.join(
-                    "|",
-                    validateField(
-                            payment.getPaymentId(),
-                            "Payment ID"
-                    ),
-                    validateField(
-                            payment.getUserId(),
-                            "User ID"
-                    ),
-                    validateField(
-                            payment.getMovieId(),
-                            "Movie ID"
-                    ),
-                    payment.getAmount().toPlainString(),
-                    validateField(
-                            payment.getPaymentMethod(),
-                            "Payment method"
-                    ),
-                    validateField(
-                            payment.getPaymentStatus(),
-                            "Payment status"
-                    ),
-                    rentalId.isEmpty()
-                            ? ""
-                            : validateField(rentalId, "Rental ID"),
-                    payment.getCreatedAt().toString()
-            );
-
-            lines.add(line);
-        }
-
-        Path temporaryFile = null;
-
-        try {
-
-            temporaryFile = Files.createTempFile(
-                    paymentFilePath.getParent(),
-                    "payments-",
-                    ".tmp"
-            );
-
-            Files.write(
-                    temporaryFile,
-                    lines,
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-            );
-
+            String id = payment.getPaymentId();
+            if (id == null || !id.matches("P\\d+")) continue;
             try {
-
-                Files.move(
-                        temporaryFile,
-                        paymentFilePath,
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE
-                );
-
-            } catch (AtomicMoveNotSupportedException e) {
-
-                Files.move(
-                        temporaryFile,
-                        paymentFilePath,
-                        StandardCopyOption.REPLACE_EXISTING
-                );
+                highest = Math.max(highest, Integer.parseInt(id.substring(1)));
+            } catch (NumberFormatException ignored) {
+                // Legacy IDs outside the int range are ignored.
             }
+        }
+        if (highest == Integer.MAX_VALUE) {
+            throw new IllegalStateException("Payment ID sequence exhausted");
+        }
+        return String.format(Locale.ROOT, "P%04d", highest + 1);
+    }
 
-        } catch (IOException e) {
-
-            throw new IllegalStateException(
-                    "Unable to save payment records.",
-                    e
-            );
-
-        } finally {
-
-            if (temporaryFile != null) {
-
-                try {
-                    Files.deleteIfExists(temporaryFile);
-                } catch (IOException ignored) {
-                    // Temporary file cleanup failure.
+    /** Read both legacy 8-field and PayHere 9-field records. */
+    private List<Payment> readPayments() {
+        List<Payment> result = new ArrayList<>();
+        try {
+            List<String> lines = Files.readAllLines(paymentFilePath, StandardCharsets.UTF_8);
+            int lineNumber = 0;
+            for (String line : lines) {
+                lineNumber++;
+                if (line.isBlank()) continue;
+                String[] data = line.split("\\|", -1);
+                if (data.length != 8 && data.length != 9) {
+                    throw new IllegalStateException("Invalid payment record on line " + lineNumber);
                 }
+                Payment payment = new Payment();
+                payment.setPaymentId(data[0]);
+                payment.setUserId(data[1]);
+                payment.setMovieId(data[2]);
+                payment.setAmount(new BigDecimal(data[3]));
+                payment.setPaymentMethod(data[4]);
+                payment.setPaymentStatus(data[5]);
+                payment.setRentalId(data[6]);
+                payment.setCreatedAt(LocalDateTime.parse(data[7]));
+                if (data.length == 9) payment.setGatewayPaymentId(data[8]);
+                result.add(payment);
+            }
+            return result;
+        } catch (IOException ex) {
+            throw new IllegalStateException("Cannot read payment storage", ex);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Cannot parse payment storage", ex);
+        }
+    }
+
+    /** Write all records through a temporary file to avoid partial writes. */
+    private void writePayments(List<Payment> payments) {
+        List<String> lines = new ArrayList<>();
+        for (Payment payment : payments) {
+            String rentalId = payment.getRentalId() == null ? "" : payment.getRentalId();
+            String transactionId = payment.getGatewayPaymentId() == null
+                    ? "" : payment.getGatewayPaymentId();
+            lines.add(String.join("|",
+                    safeField(payment.getPaymentId(), "Payment ID"),
+                    safeField(payment.getUserId(), "User ID"),
+                    safeField(payment.getMovieId(), "Movie ID"),
+                    payment.getAmount().toPlainString(),
+                    safeField(payment.getPaymentMethod(), "Payment method"),
+                    safeField(payment.getPaymentStatus(), "Payment status"),
+                    rentalId.isEmpty() ? "" : safeField(rentalId, "Rental ID"),
+                    payment.getCreatedAt().toString(),
+                    transactionId.isEmpty() ? "" : safeField(transactionId, "Transaction ID")
+            ));
+        }
+
+        Path temporary = null;
+        try {
+            temporary = Files.createTempFile(paymentFilePath.getParent(), "payments-", ".tmp");
+            Files.write(temporary, lines, StandardCharsets.UTF_8,
+                    StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+            try {
+                Files.move(temporary, paymentFilePath,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temporary, paymentFilePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Cannot save payment storage", ex);
+        } finally {
+            if (temporary != null) {
+                try { Files.deleteIfExists(temporary); }
+                catch (IOException ignored) { /* Best-effort cleanup. */ }
             }
         }
     }
 
-
-    // VALIDATION
-
-
-    private String validatePaymentMethod(
-            String paymentMethod
-    ) {
-
-        String method = validateField(paymentMethod, "Payment method").toUpperCase(Locale.ROOT);
-
-        if (!DEMO_CARD.equals(method) && !BANK_TRANSFER.equals(method)) {
-
-            throw new IllegalArgumentException(
-                    "Unsupported payment method."
-            );
+    private static String safeField(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
         }
-
-        return method;
-    }
-
-    private String validateField(
-            String value,
-            String fieldName
-    ) {
-
-        if (value == null || value.trim().isEmpty()) {
-
-            throw new IllegalArgumentException(fieldName + " cannot be empty.");
-        }
-
         String cleaned = value.trim();
-
         if (cleaned.contains("|") || cleaned.contains("\n") || cleaned.contains("\r")) {
-
-            throw new IllegalArgumentException(fieldName + " contains invalid characters.");
+            throw new IllegalArgumentException(fieldName + " contains invalid characters");
         }
-
         return cleaned;
     }
 }

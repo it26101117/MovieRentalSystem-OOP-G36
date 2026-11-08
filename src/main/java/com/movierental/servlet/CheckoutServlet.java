@@ -176,6 +176,9 @@ public class CheckoutServlet extends HttpServlet {
             request.setAttribute("currency", "LKR");
             request.setAttribute("demoCardMethod", PaymentService.DEMO_CARD);
             request.setAttribute("bankTransferMethod", PaymentService.BANK_TRANSFER);
+            request.setAttribute("payHereMethod", PaymentService.PAYHERE);
+            request.setAttribute("demoEnabled", "true".equalsIgnoreCase(
+                    System.getenv().getOrDefault("CINERENT_DEMO_PAYMENTS_ENABLED", "false")));
             request.setAttribute("csrfToken", csrfToken);
 
 

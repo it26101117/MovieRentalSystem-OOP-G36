@@ -1035,6 +1035,24 @@
 
                 </div>
 
+                <%-- Only PaymentServlet supplies this CSRF token after verifying payment ownership. --%>
+                <%
+                    String activationToken = (String) request.getAttribute("rentalCsrfToken");
+                    if (activationToken != null && !activationToken.isBlank()) {
+                %>
+                <form method="post" action="<%= ctx %>/rentals"
+                      style="margin:20px 0; display:flex; flex-wrap:wrap; gap:12px;">
+                    <input type="hidden" name="action" value="rent">
+                    <input type="hidden" name="paymentId" value="<%= HtmlUtil.escape(paymentId) %>">
+                    <input type="hidden" name="movieId" value="<%= HtmlUtil.escape(movieId) %>">
+                    <input type="hidden" name="rentalCsrfToken" value="<%= HtmlUtil.escape(activationToken) %>">
+                    <button type="submit" class="ps-btn ps-btn-primary"
+                            style="border:0; cursor:pointer; font:inherit;">
+                        ▶ Activate Paid Rental
+                    </button>
+                </form>
+                <% } %>
+
                 <%
                 } else if (isPending && isBankTransfer) {
                 %>

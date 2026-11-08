@@ -71,11 +71,11 @@ public class AdminReviewServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException
     {
-         HttpSession session = request.getSession(false);
+        HttpSession session = request.getSession(false);
 
-         if (!checkAdminAccess( session,  request,  response)
+        if (!checkAdminAccess( session,  request,  response)
 
-         ) {
+        ) {
 
             return;
         }
@@ -83,22 +83,22 @@ public class AdminReviewServlet extends HttpServlet {
 
 
 
-         List<Review> allReviews =   reviewService.getAllReviews();
+        List<Review> allReviews =   reviewService.getAllReviews();
 
-         List<User> users =userService.getAllUsers();
+        List<User> users =userService.getAllUsers();
 
-         List<Movie> movies = movieService  .getAllMovies();
+        List<Movie> movies = movieService  .getAllMovies();
 
-         Map<String, User> userMap = new HashMap<>();
+        Map<String, User> userMap = new HashMap<>();
 
-         for (User user : users) {
+        for (User user : users) {
 
             userMap.put( user.getUserId(),
                     user
             );
         }
 
-         Map<String, Movie> movieMap = new HashMap<>();
+        Map<String, Movie> movieMap = new HashMap<>();
 
 
 

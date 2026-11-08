@@ -1,85 +1,65 @@
-
 package com.movierental.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
+/**
+ * Represents a CineRent movie-rental payment.
+ *
+ * Supported methods: demo card, bank transfer, and PayHere.
+ * The gateway payment ID is retained so PaymentService can handle
+ * repeated PayHere notifications safely.
+ */
 public class Payment {
 
-
-    // PAYMENT METHODS
-
-
+    // Payment methods
     public static final String METHOD_DEMO_CARD = "DEMO_CARD";
     public static final String METHOD_BANK_TRANSFER = "BANK_TRANSFER";
+    public static final String METHOD_PAYHERE = "PAYHERE";
 
-
-    // PAYMENT STATUSES
-
-
+    // Payment statuses
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_PAID = "PAID";
     public static final String STATUS_FAILED = "FAILED";
     public static final String STATUS_REJECTED = "REJECTED";
-
-
-    // PAYMENT ATTRIBUTES
-
+    public static final String STATUS_CHARGEBACK = "CHARGEBACK";
 
     private String paymentId;
     private String userId;
     private String movieId;
-
     private BigDecimal amount;
-
     private String paymentMethod;
     private String paymentStatus;
-
     private String rentalId;
-
+    private String gatewayPaymentId;
     private LocalDateTime createdAt;
 
-
-    // DEFAULT CONSTRUCTOR
-
-
+    // Required by PaymentService when reading/writing payments.txt.
     public Payment() {
-
         this.amount = BigDecimal.ZERO;
         this.paymentStatus = STATUS_PENDING;
         this.rentalId = "";
+        this.gatewayPaymentId = "";
         this.createdAt = LocalDateTime.now();
     }
 
-
-    // PARAMETERIZED CONSTRUCTOR
-
-
-    public Payment(
-            String paymentId,
-            String userId,
-            String movieId,
-            BigDecimal amount,
-            String paymentMethod,
-            String paymentStatus,
-            String rentalId,
-            LocalDateTime createdAt
-    ) {
-
+    // Retains compatibility with the original eight-argument constructor.
+    public Payment(String paymentId, String userId, String movieId,
+                   BigDecimal amount, String paymentMethod,
+                   String paymentStatus, String rentalId,
+                   LocalDateTime createdAt) {
+        this();
         this.paymentId = paymentId;
         this.userId = userId;
         this.movieId = movieId;
-        this.amount = amount;
+        setAmount(amount);
         this.paymentMethod = paymentMethod;
         this.paymentStatus = paymentStatus;
         this.rentalId = rentalId;
         this.createdAt = createdAt;
     }
-
-
-    // PAYMENT ID
-
 
     public String getPaymentId() {
         return paymentId;
@@ -89,10 +69,6 @@ public class Payment {
         this.paymentId = paymentId;
     }
 
-
-    // USER ID
-
-
     public String getUserId() {
         return userId;
     }
@@ -100,10 +76,6 @@ public class Payment {
     public void setUserId(String userId) {
         this.userId = userId;
     }
-
-
-    // MOVIE ID
-
 
     public String getMovieId() {
         return movieId;
@@ -113,30 +85,19 @@ public class Payment {
         this.movieId = movieId;
     }
 
-
-    // PAYMENT AMOUNT
-
-
     public BigDecimal getAmount() {
         return amount;
     }
 
     public void setAmount(BigDecimal amount) {
-
         if (amount == null) {
             throw new IllegalArgumentException("Payment amount cannot be null.");
         }
-
         if (amount.signum() < 0) {
             throw new IllegalArgumentException("Payment amount cannot be negative.");
         }
-
         this.amount = amount;
     }
-
-
-    // PAYMENT METHOD
-
 
     public String getPaymentMethod() {
         return paymentMethod;
@@ -146,10 +107,6 @@ public class Payment {
         this.paymentMethod = paymentMethod;
     }
 
-
-    // PAYMENT STATUS
-
-
     public String getPaymentStatus() {
         return paymentStatus;
     }
@@ -157,10 +114,6 @@ public class Payment {
     public void setPaymentStatus(String paymentStatus) {
         this.paymentStatus = paymentStatus;
     }
-
-
-    // RENTAL ID
-
 
     public String getRentalId() {
         return rentalId;
@@ -170,9 +123,14 @@ public class Payment {
         this.rentalId = rentalId;
     }
 
+    /** PayHere transaction ID, used by PaymentService for callback idempotency. */
+    public String getGatewayPaymentId() {
+        return gatewayPaymentId;
+    }
 
-    // CREATED DATE AND TIME
-
+    public void setGatewayPaymentId(String gatewayPaymentId) {
+        this.gatewayPaymentId = gatewayPaymentId == null ? "" : gatewayPaymentId;
+    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
@@ -182,105 +140,83 @@ public class Payment {
         this.createdAt = createdAt;
     }
 
-
-    // CHECK PAYMENT STATUS
-
-
     public boolean isPending() {
-
         return STATUS_PENDING.equalsIgnoreCase(paymentStatus);
     }
 
     public boolean isPaid() {
-
         return STATUS_PAID.equalsIgnoreCase(paymentStatus);
     }
 
     public boolean isFailed() {
-
         return STATUS_FAILED.equalsIgnoreCase(paymentStatus);
     }
 
     public boolean isRejected() {
-
         return STATUS_REJECTED.equalsIgnoreCase(paymentStatus);
     }
 
-
-    // CHECK PAYMENT METHOD
-
+    public boolean isChargeback() {
+        return STATUS_CHARGEBACK.equalsIgnoreCase(paymentStatus);
+    }
 
     public boolean isDemoCardPayment() {
-
         return METHOD_DEMO_CARD.equalsIgnoreCase(paymentMethod);
     }
 
     public boolean isBankTransfer() {
-
         return METHOD_BANK_TRANSFER.equalsIgnoreCase(paymentMethod);
     }
 
-
-    // CHECK RENTAL LINK
-
+    public boolean isPayHere() {
+        return METHOD_PAYHERE.equalsIgnoreCase(paymentMethod);
+    }
 
     public boolean hasRental() {
-
         return rentalId != null && !rentalId.trim().isEmpty();
     }
 
-
-    // FORMATTED PAYMENT AMOUNT
-
-
     public String getFormattedAmount() {
-
         if (amount == null) {
             return "LKR 0.00";
         }
-
-        return "LKR " + String.format(java.util.Locale.US, "%,.2f", amount);
+        return "LKR " + String.format(Locale.US, "%,.2f", amount);
     }
 
-
-    // FORMATTED PAYMENT DATE
-
-
     public String getFormattedCreatedAt() {
-
         if (createdAt == null) {
             return "";
         }
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a", java.util.Locale.ENGLISH);
-
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+                "dd MMM yyyy, hh:mm a", Locale.ENGLISH);
         return createdAt.format(formatter);
     }
 
-
-    // PAYMENT METHOD DISPLAY NAME
-
-
     public String getPaymentMethodDisplay() {
-
         if (isDemoCardPayment()) {
             return "Demo Card";
         }
-
         if (isBankTransfer()) {
             return "Bank Transfer";
         }
-
+        if (isPayHere()) {
+            return "PayHere Online Payment";
+        }
         return paymentMethod == null ? "Unknown" : paymentMethod;
     }
 
-
-    // TO STRING
-
-
     @Override
     public String toString() {
-
-        return "Payment{" + "paymentId='" + paymentId + '\'' + ", userId='" + userId + '\'' + ", movieId='" + movieId + '\'' + ", amount=" + amount + ", paymentMethod='" + paymentMethod + '\'' + ", paymentStatus='" + paymentStatus + '\'' + ", rentalId='" + rentalId + '\'' + ", createdAt=" + createdAt + '}';
+        return "Payment{" +
+                "paymentId='" + paymentId + '\'' +
+                ", userId='" + userId + '\'' +
+                ", movieId='" + movieId + '\'' +
+                ", amount=" + amount +
+                ", paymentMethod='" + paymentMethod + '\'' +
+                ", paymentStatus='" + paymentStatus + '\'' +
+                ", rentalId='" + rentalId + '\'' +
+                ", gatewayPaymentId='" + gatewayPaymentId + '\'' +
+                ", createdAt=" + createdAt +
+                '}';
     }
 }
