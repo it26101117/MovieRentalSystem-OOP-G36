@@ -969,6 +969,15 @@
                             p.getFormattedAmount()
                     ) %>
                     </strong>
+                    <% if (p.isPaid() && !p.hasRental()) { %>
+                    <form method="post" action="<%= ctx %>/rentals" style="display:inline-flex; margin:0;">
+                        <input type="hidden" name="action" value="rent">
+                        <input type="hidden" name="paymentId" value="<%= esc(p.getPaymentId()) %>">
+                        <input type="hidden" name="movieId" value="<%= esc(p.getMovieId()) %>">
+                        <input type="hidden" name="rentalCsrfToken" value="<%= esc(csrf) %>">
+                        <button type="submit" class="mr-btn mr-primary">Activate Rental</button>
+                    </form>
+                    <% } %>
                     <a
                             class="mr-btn"
                             href="<%= ctx %>/payments?paymentId=<%= esc(p.getPaymentId()) %>"
