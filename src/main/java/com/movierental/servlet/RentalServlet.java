@@ -42,6 +42,7 @@ public class RentalServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         try {
+
             String rentals = DataPathUtil.getFilePath("rentals.txt");
             String movies = DataPathUtil.getFilePath("movies.txt");
             String payments = DataPathUtil.getFilePath("payments.txt");
