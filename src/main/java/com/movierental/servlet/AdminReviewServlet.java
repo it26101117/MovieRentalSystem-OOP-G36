@@ -30,78 +30,48 @@ public class AdminReviewServlet extends HttpServlet {
     private MovieService movieService;
     private UserService userService;
 
-
-
-
     @Override
     public void init() throws ServletException {
 
         try {
-
             String reviewFilePath = DataPathUtil.getFilePath("reviews.txt" );
-
             String movieFilePath = DataPathUtil.getFilePath("movies.txt" );
-
             String userFilePath = DataPathUtil.getFilePath("users.txt" );
 
             reviewService = new ReviewService(  reviewFilePath );
-
             movieService = new MovieService(movieFilePath);
-
             userService =new UserService( userFilePath  );
 
             System.out.println("AdminReviewServlet reviews file: " + reviewFilePath );
-
             System.out.println("AdminReviewServlet movies file: " + movieFilePath  );
-
             System.out.println( "AdminReviewServlet users file: " + userFilePath );
 
         }
         catch (Exception e) {
-            throw new ServletException(
-                    "Failed to initialize AdminReviewServlet", e   );
-
-
+            throw new ServletException("Failed to initialize AdminReviewServlet", e   );
         }
     }
-
-
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException
     {
         HttpSession session = request.getSession(false);
-
-        if (!checkAdminAccess( session,  request,  response)
-
-        ) {
-
+        if (!checkAdminAccess( session,  request,  response)) {
             return;
         }
 
-
         List<Review> allReviews =   reviewService.getAllReviews();
-
         List<User> users =userService.getAllUsers();
-
         List<Movie> movies = movieService  .getAllMovies();
-
         Map<String, User> userMap = new HashMap<>();
-
         for (User user : users) {
-
             userMap.put( user.getUserId(),
                     user
             );
         }
-
         Map<String, Movie> movieMap = new HashMap<>();
-
-
-
         for (Movie movie : movies) {
-
             movieMap.put(
                     movie.getMovieId(),
                     movie
@@ -143,90 +113,35 @@ public class AdminReviewServlet extends HttpServlet {
 
 
         if (
-                ratingFilter == null
-                        ||
-                        ratingFilter.trim().isEmpty()
+                ratingFilter == null || ratingFilter.trim().isEmpty()
         ) {
-
-            ratingFilter =
-                    "all";
+            ratingFilter = "all";
         }
 
-
-        // =====================================================
         // FILTER REVIEWS
-        // =====================================================
-
-        List<Review> filteredReviews =
-                new ArrayList<>();
-
-
+        List<Review> filteredReviews = new ArrayList<>();
         for (Review review : allReviews) {
 
-            // =================================================
-            // RATING MATCH
-            // =================================================
-
-            boolean ratingMatches =
-                    true;
-
-
-            if (
-                    !"all".equalsIgnoreCase(
-                            ratingFilter
-                    )
-            ) {
-
+            boolean ratingMatches = true;
+            if (!"all".equalsIgnoreCase(ratingFilter)) {
                 try {
-
-                    int selectedRating =
-                            Integer.parseInt(
-                                    ratingFilter
-                            );
-
-
-                    ratingMatches =
-                            review.getRating()
-                                    == selectedRating;
-
-                } catch (
-                        NumberFormatException e
-                ) {
-
-                    ratingMatches =
-                            true;
+                    int selectedRating = Integer.parseInt(ratingFilter);
+                    ratingMatches = review.getRating() == selectedRating;
+                } catch (NumberFormatException e) {
+                    ratingMatches = true;
                 }
             }
-
-
             if (!ratingMatches) {
-
                 continue;
             }
 
-
-            // =================================================
             // SEARCH
-            // =================================================
+            boolean searchMatches = searchText.isEmpty();
 
-            boolean searchMatches =
-                    searchText.isEmpty();
-
-
-            User user =
-                    userMap.get(
-                            review.getUserId()
-                    );
-
-
-            Movie movie =
-                    movieMap.get(
-                            review.getMovieId()
-                    );
-
+            User user = userMap.get(review.getUserId());
+            Movie movie = movieMap.get(review.getMovieId());
 
             if (!searchText.isEmpty()) {
-
                 // ---------------------------------------------
                 // REVIEW ID
                 // ---------------------------------------------
