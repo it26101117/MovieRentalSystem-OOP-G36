@@ -6,6 +6,7 @@ import com.movierental.model.User;
 import com.movierental.service.MovieService;
 import com.movierental.service.PayHereGateway;
 import com.movierental.service.PaymentService;
+import com.movierental.service.PaidRentalActivationService;
 import com.movierental.service.RentalService;
 import com.movierental.util.DataPathUtil;
 import jakarta.servlet.ServletException;
@@ -243,6 +244,12 @@ public class PaymentServlet extends HttpServlet {
                 if (PaymentService.DEMO_CARD.equals(payment.getPaymentMethod())
                         && payment.isPending()) {
                     payment = paymentService.markPaymentPaid(payment.getPaymentId());
+                    try {
+                        new PaidRentalActivationService().activate(payment.getPaymentId());
+                    } catch (Exception activationFailure) {
+                        getServletContext().log("Demo payment PAID but activation failed: " +
+                                payment.getPaymentId(), activationFailure);
+                    }
                 }
             }
 
