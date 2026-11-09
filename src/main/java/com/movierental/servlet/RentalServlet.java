@@ -1,14 +1,14 @@
 package com.movierental.servlet;
 
 import com.movierental.model.Movie;
-import com.movierental.model.Rental;
 import com.movierental.model.Payment;
-import com.movierental.service.PaymentService;
+import com.movierental.model.Rental;
 import com.movierental.service.MovieService;
+import com.movierental.service.PaidRentalActivationService;
+import com.movierental.service.PaymentService;
 import com.movierental.service.RentalService;
 import com.movierental.service.WatchHistoryService;
 import com.movierental.util.DataPathUtil;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -17,320 +17,229 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@WebServlet("/rentals")
+@WebServlet(name = "RentalServlet", urlPatterns = "/rentals")
 public class RentalServlet extends HttpServlet {
 
-    private static final Object RENTAL_ACTIVATION_LOCK = new Object();
+    private static final long serialVersionUID = 1L;
+    private static final Object RENTAL_LOCK = new Object();
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String TOKEN_KEY = "rentalCsrfToken";
+
     private PaymentService paymentService;
     private RentalService rentalService;
     private MovieService movieService;
     private WatchHistoryService watchHistoryService;
 
-    // INITIALIZATION
-
     @Override
     public void init() throws ServletException {
+        try {
+            String rentals = DataPathUtil.getFilePath("rentals.txt");
+            String movies = DataPathUtil.getFilePath("movies.txt");
+            String payments = DataPathUtil.getFilePath("payments.txt");
+            String history = DataPathUtil.getFilePath("watch_history.txt");
+            rentalService = new RentalService(rentals);
+            movieService = new MovieService(movies);
+            paymentService = new PaymentService(payments);
+            watchHistoryService = new WatchHistoryService(history, movieService);
+            getServletContext().log("Rental storage: " + rentals);
+            getServletContext().log("Payment storage: " + payments);
+        } catch (Exception ex) {
+            throw new ServletException("Cannot initialize rental services", ex);
+        }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setHeader("Cache-Control", "no-store");
+        HttpSession session = request.getSession(false);
+        String userId = requireCustomer(request, response, session);
+        if (userId == null) return;
 
         try {
+            List<Rental> rentals = rentalService.getRentalsByUser(userId);
+            List<Movie> movies = movieService.getAllMovies();
+            List<Payment> payments = paymentService.getPaymentsByUser(userId);
 
-            String rentalFilePath = DataPathUtil.getFilePath("rentals.txt");
+            Map<String, Movie> moviesById = new HashMap<>();
+            for (Movie movie : movies) {
+                moviesById.put(movie.getMovieId(), movie);
+            }
 
-            String movieFilePath = DataPathUtil.getFilePath("movies.txt");
-
-            String watchHistoryFilePath = DataPathUtil.getFilePath("watch_history.txt");
-
-
-            rentalService = new RentalService(rentalFilePath);
-            paymentService = new PaymentService(DataPathUtil.getFilePath("payments.txt"));
-
-            movieService = new MovieService(movieFilePath);
-
-            watchHistoryService = new WatchHistoryService(watchHistoryFilePath, movieService);
-
-
-            System.out.println("RentalServlet rentals file: " + rentalFilePath);
-
-            System.out.println("RentalServlet movies file: " + movieFilePath);
-
-            System.out.println("RentalServlet watch history file: " + watchHistoryFilePath);
-
-        } catch (Exception e) {
-            throw new ServletException("Failed to initialize RentalServlet", e);
+            request.setAttribute("rentals", rentals);
+            request.setAttribute("movies", movies);
+            request.setAttribute("moviesById", moviesById);
+            request.setAttribute("payments", payments);
+            request.setAttribute("movieService", movieService);
+            request.setAttribute(TOKEN_KEY, getOrCreateToken(session));
+            request.getRequestDispatcher("/WEB-INF/views/my-rentals.jsp")
+                    .forward(request, response);
+        } catch (IOException ex) {
+            getServletContext().log("Cannot load rentals for " + userId, ex);
+            response.sendError(500, "Unable to load rentals. Check server logs.");
         }
     }
 
-    // GET - SHOW CUSTOMER RENTALS
-
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
         HttpSession session = request.getSession(false);
-
-
-        // LOGIN CHECK
-
-        if (session == null || session.getAttribute("loggedUser") == null) {
-
-            response.sendRedirect(request.getContextPath() + "/login");
-
-            return;
-        }
-
-
-        // CUSTOMER ACCESS ONLY
-
-        String role = (String) session.getAttribute("role");
-
-        if (!"CUSTOMER".equalsIgnoreCase(role)) {
-            response.sendRedirect(request.getContextPath() + "/admin");
-            return;
-        }
-
-        String userId = (String) session.getAttribute("userId");
-
-        if (userId == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
-        }
-
-
-        // GET CUSTOMER RENTALS
-
-        List<Rental> rentals = rentalService.getRentalsByUser(userId);
-
-        request.setAttribute("rentals", rentals);
-
-        request.setAttribute("movieService", movieService);
-
-        request.getRequestDispatcher("/WEB-INF/views/my-rentals.jsp").forward(request, response);
-    }
-
-
-    // POST - RENT OR RETURN
-
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {request.setCharacterEncoding("UTF-8");
-
-        HttpSession session = request.getSession(false);
-
-
-        // LOGIN CHECK
-
-        if (session == null || session.getAttribute("loggedUser") == null) {
-
-            response.sendRedirect(request.getContextPath() + "/login");
-
-            return;
-        }
-
-
-        // CUSTOMER ACCESS ONLY
-
-        String role = (String) session.getAttribute("role");
-
-        if (!"CUSTOMER".equalsIgnoreCase(role)) {
-
-            response.sendRedirect(request.getContextPath() + "/admin");
-
-            return;
-        }
-
-        String userId = (String) session.getAttribute("userId");
-
-        if (userId == null) {response.sendRedirect(request.getContextPath() + "/login");
-
-            return;
-        }
+        String userId = requireCustomer(request, response, session);
+        if (userId == null) return;
 
         String action = request.getParameter("action");
-
-
-        // RENT
-
-        if ("rent".equalsIgnoreCase(action)) {rentMovie(request, response, userId);
-
-        }
-
-        // RETURN
-
-        else if ("return".equalsIgnoreCase(action)) {
-
+        if ("rent".equalsIgnoreCase(action)) {
+            if (!validToken(session, request.getParameter("rentalCsrfToken"))) {
+                response.sendError(403, "Invalid rental activation token.");
+                return;
+            }
+            activatePaidRental(request, response, session, userId);
+        } else if ("return".equalsIgnoreCase(action)) {
+            if (!validToken(session, request.getParameter("csrfToken"))) {
+                response.sendError(403, "Invalid rental return token.");
+                return;
+            }
             returnMovie(request, response, userId);
-
-        }
-
-        // INVALID ACTION
-
-        else {
-            response.sendRedirect(request.getContextPath()+ "/rentals");
+        } else {
+            response.sendError(400, "Unsupported rental action.");
         }
     }
 
-
-    // RENT MOVIE
-
-    private void rentMovie(HttpServletRequest request, HttpServletResponse response, String userId)
-            throws IOException {
-        HttpSession session = request.getSession(false);
-        String token = request.getParameter("rentalCsrfToken");
-        Object stored = session == null ? null : session.getAttribute("rentalCsrfToken");
-        if (!(stored instanceof String) || token == null || !MessageDigest.isEqual(
-                ((String) stored).getBytes(StandardCharsets.UTF_8),
-                token.getBytes(StandardCharsets.UTF_8))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                    "Rental activation requires a valid confirmation token.");
+    private void activatePaidRental(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    HttpSession session, String userId) throws IOException {
+        String paymentId = trim(request.getParameter("paymentId"));
+        String movieId = trim(request.getParameter("movieId"));
+        if (paymentId.isEmpty() || !movieId.matches("[A-Za-z0-9_-]{1,64}")) {
+            response.sendError(400, "Valid payment and movie IDs are required.");
             return;
         }
 
-        String paymentId = request.getParameter("paymentId");
-        String movieId = request.getParameter("movieId");
-        if (paymentId == null || movieId == null || paymentId.isBlank() || movieId.isBlank()) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Payment and movie required.");
-            return;
-        }
-
-        synchronized (RENTAL_ACTIVATION_LOCK) {
+        try {
             Payment payment = paymentService.getPaymentById(paymentId);
-            if (payment == null || !userId.equals(payment.getUserId())
-                    || !movieId.equals(payment.getMovieId()) || !payment.isPaid()) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                        "A confirmed payment belonging to this customer is required.");
+            if (payment == null || !userId.equals(payment.getUserId()) ||
+                    !movieId.equals(payment.getMovieId()) || !payment.isPaid()) {
+                response.sendError(403, "A confirmed payment owned by this customer is required.");
                 return;
             }
-            if (payment.hasRental()) {
-                response.sendRedirect(request.getContextPath() + "/rentals");
-                return;
-            }
-            Movie movie = movieService.getMovieById(movieId);
-            if (movie == null || movie.getAvailableCopies() <= 0) {
-                response.sendRedirect(request.getContextPath() + "/catalog?error=unavailable");
-                return;
-            }
-            if (rentalService.hasActiveRental(userId, movieId)) {
-                response.sendRedirect(request.getContextPath() + "/rentals?error=alreadyactive");
-                return;
-            }
-
-            String rentalId = rentalService.generateNextRentalId();
-            Rental rental = new Rental(rentalId, userId, movieId,
-                    LocalDate.now().toString(), "", "RENTED");
-            int oldCopies = movie.getAvailableCopies();
-            boolean rentalAdded = false;
-            boolean copiesChanged = false;
-            try {
-                rentalService.addRental(rental);
-                rentalAdded = true;
-                movie.setAvailableCopies(oldCopies - 1);
-                if (!movieService.updateMovie(movie))
-                    throw new IOException("Could not update movie inventory");
-                copiesChanged = true;
-                paymentService.attachRentalId(paymentId, rentalId);
-            } catch (Exception failure) {
-                // Best-effort compensation only. For real-money production use DB transactions.
-                if (rentalAdded) {
-                    try {
-                        rental.setStatus("RETURNED");
-                        rental.setReturnDate(LocalDate.now().toString());
-                        rentalService.updateRental(rental);
-                    } catch (Exception rollback) {
-                        getServletContext().log("URGENT: rental rollback failed: " + rentalId, rollback);
-                    }
-                }
-                if (copiesChanged) {
-                    try {
-                        movie.setAvailableCopies(oldCopies);
-                        movieService.updateMovie(movie);
-                    } catch (Exception rollback) {
-                        getServletContext().log("URGENT: inventory rollback failed: " + movieId, rollback);
-                    }
-                }
-                getServletContext().log("Rental activation failed for payment " + paymentId, failure);
-                response.sendError(500, "Rental activation failed. Contact support with your payment ID.");
-                return;
-            }
-            session.removeAttribute("rentalCsrfToken");
+            new PaidRentalActivationService().activate(paymentId);
             response.sendRedirect(request.getContextPath() + "/rentals");
+        } catch (IllegalStateException ex) {
+            getServletContext().log("Cannot activate paid rental " + paymentId, ex);
+            response.sendRedirect(request.getContextPath() + "/rentals?error=activation");
+        } catch (Exception ex) {
+            getServletContext().log("Failed to activate paid rental " + paymentId, ex);
+            response.sendError(500, "Unable to activate rental; check application logs.");
         }
     }
 
-    // RETURN MOVIE
-
-    private void returnMovie(HttpServletRequest request, HttpServletResponse response, String userId) throws IOException {
-
-        String rentalId = request.getParameter("rentalId");
-
-
-        // Rental ID missing
-        if (rentalId == null || rentalId.trim().isEmpty()) {
-
-            response.sendRedirect(request.getContextPath() + "/rentals");
-
+    private void returnMovie(HttpServletRequest request,
+                             HttpServletResponse response, String userId) throws IOException {
+        String rentalId = trim(request.getParameter("rentalId"));
+        if (rentalId.isEmpty()) {
+            response.sendError(400, "Rental ID is required.");
             return;
         }
 
-        Rental rental = rentalService.getRentalById(rentalId);
+        synchronized (RENTAL_LOCK) {
+            try {
+                Rental rental = rentalService.getRentalById(rentalId);
+                if (rental == null || !userId.equals(rental.getUserId())) {
+                    response.sendError(404, "Rental not found.");
+                    return;
+                }
+                if (!"RENTED".equalsIgnoreCase(rental.getStatus())) {
+                    response.sendRedirect(request.getContextPath() + "/rentals");
+                    return;
+                }
 
-        // RENTAL NOT FOUND
+                Movie movie = movieService.getMovieById(rental.getMovieId());
+                String oldDate = rental.getReturnDate();
+                String oldStatus = rental.getStatus();
+                rental.setStatus("RETURNED");
+                rental.setReturnDate(LocalDate.now().toString());
+                if (!rentalService.updateRental(rental)) {
+                    response.sendError(500, "Unable to update rental.");
+                    return;
+                }
 
-        if (rental == null) {
-
-            response.sendRedirect(request.getContextPath() + "/rentals");
-
-            return;
+                if (movie != null) {
+                    int previousCopies = movie.getAvailableCopies();
+                    movie.setAvailableCopies(previousCopies + 1);
+                    if (!movieService.updateMovie(movie)) {
+                        rental.setStatus(oldStatus);
+                        rental.setReturnDate(oldDate);
+                        rentalService.updateRental(rental);
+                        response.sendError(500, "Unable to update movie inventory.");
+                        return;
+                    }
+                }
+                try {
+                    watchHistoryService.recordWatchedMovie(userId, rental.getMovieId());
+                } catch (Exception ex) {
+                    getServletContext().log("Watch history could not be updated: " + rentalId, ex);
+                }
+                response.sendRedirect(request.getContextPath() + "/rentals");
+            } catch (Exception ex) {
+                getServletContext().log("Movie return failed: " + rentalId, ex);
+                if (!response.isCommitted()) response.sendError(500, "Unable to return movie.");
+            }
         }
+    }
 
-        // VERIFY RENTAL OWNER
-
-        if (!userId.equals(rental.getUserId())) {
-
-            response.sendRedirect(request.getContextPath() + "/rentals");
-
-            return;
+    private String requireCustomer(HttpServletRequest request,
+                                   HttpServletResponse response,
+                                   HttpSession session) throws IOException {
+        if (session == null || session.getAttribute("loggedUser") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return null;
         }
-
-        // PREVENT DOUBLE RETURN
-
-        if (!"RENTED".equalsIgnoreCase(rental.getStatus())) {
-
-            response.sendRedirect(request.getContextPath() + "/rentals");
-
-            return;
+        Object role = session.getAttribute("role");
+        if (role == null || !"CUSTOMER".equalsIgnoreCase(role.toString())) {
+            response.sendRedirect(request.getContextPath() + "/admin");
+            return null;
         }
-
-        // UPDATE RENTAL STATUS
-
-        rental.setStatus("RETURNED");
-
-        rental.setReturnDate(LocalDate.now().toString());
-
-        rentalService.updateRental(rental);
-
-
-        // INCREASE AVAILABLE MOVIE COPIES
-
-        Movie movie = movieService.getMovieById(rental.getMovieId());
-
-
-        if (movie != null) {
-
-            movie.setAvailableCopies(movie.getAvailableCopies() + 1);
-
-
-            movieService.updateMovie(movie);
+        Object id = session.getAttribute("userId");
+        if (id == null || id.toString().isBlank()) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return null;
         }
+        return id.toString().trim();
+    }
 
+    private String getOrCreateToken(HttpSession session) {
+        synchronized (session) {
+            Object stored = session.getAttribute(TOKEN_KEY);
+            if (stored instanceof String && !((String) stored).isBlank()) {
+                return (String) stored;
+            }
+            byte[] bytes = new byte[32];
+            RANDOM.nextBytes(bytes);
+            String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            session.setAttribute(TOKEN_KEY, token);
+            return token;
+        }
+    }
 
-        // RECORD RECENTLY WATCHED
+    private boolean validToken(HttpSession session, String submitted) {
+        if (session == null || submitted == null) return false;
+        Object stored = session.getAttribute(TOKEN_KEY);
+        return stored instanceof String && MessageDigest.isEqual(
+                ((String) stored).getBytes(StandardCharsets.UTF_8),
+                submitted.getBytes(StandardCharsets.UTF_8));
+    }
 
-        watchHistoryService.recordWatchedMovie(userId, rental.getMovieId());
-
-
-        // REDIRECT
-        response.sendRedirect(request.getContextPath() + "/rentals");
+    private static String trim(String text) {
+        return text == null ? "" : text.trim();
     }
 }
