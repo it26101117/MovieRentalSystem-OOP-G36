@@ -19,6 +19,14 @@ public class RentalService {
         FileHandler.appendLine(rentalFilePath, line);
     }
 
+    /** Remove a failed new rental without falsely marking it as returned/reviewable. */
+    public boolean deleteRental(String rentalId) throws IOException {
+        List<Rental> all = getAllRentals();
+        boolean removed = all.removeIf(r -> rentalId.equals(r.getRentalId()));
+        if (removed) saveAllRentals(all);
+        return removed;
+    }
+
     public List<Rental> getAllRentals() throws IOException {
 
         List<String> lines = FileHandler.readAllLines(rentalFilePath);
