@@ -46,7 +46,6 @@ public class PaymentServlet extends HttpServlet {
 
     // These names must match the actual files in WEB-INF/views.
     private static final String HISTORY_VIEW = "/WEB-INF/views/my-payments.jsp";
-    private static final String SUCCESS_VIEW = "/WEB-INF/views/payment-success.jsp";
     private static final String PAYHERE_VIEW = "/WEB-INF/views/payhere-redirect.jsp";
 
     private PaymentService paymentService;
@@ -80,6 +79,9 @@ public class PaymentServlet extends HttpServlet {
             List<Payment> payments = paymentService.getPaymentsByUser(userId);
             request.setAttribute("payments", payments);
             request.setAttribute("userName", session.getAttribute("userName"));
+            // POST /rentals validates the token stored in this session.
+            // Supplying it on history AND details lets older PAID orders be activated.
+            request.setAttribute("rentalCsrfToken", rentalToken(session));
 
             String paymentId = trim(request.getParameter("paymentId"));
             if (paymentId.isEmpty()) {
@@ -104,20 +106,17 @@ public class PaymentServlet extends HttpServlet {
             request.setAttribute("rentalReady", payment.isPaid() && payment.hasRental());
             request.setAttribute("paymentMessage", statusMessage(payment));
 
-            if (payment.isPaid()) {
-                if (!payment.hasRental()) {
-                    request.setAttribute("rentalCsrfToken", rentalToken(session));
-                }
-                forward(request, response, SUCCESS_VIEW);
-            } else {
-                forward(request, response, HISTORY_VIEW);
-            }
+            // Use the same payment-details JSP for every status. The
+            // separate success JSP is not required for viewing a payment.
+            forward(request, response, HISTORY_VIEW);
 
         } catch (ServletException | IOException ex) {
-            getServletContext().log("Payment page rendering failed", ex);
+            getServletContext().log("Payment page rendering failed for paymentId="
+                    + trim(request.getParameter("paymentId")), ex);
             throw ex;
         } catch (RuntimeException ex) {
-            getServletContext().log("Unable to load customer payments", ex);
+            getServletContext().log("Unable to load customer payments for paymentId="
+                    + trim(request.getParameter("paymentId")), ex);
             if (!response.isCommitted()) {
                 response.sendError(500, "Unable to load payments; check server logs");
             }
