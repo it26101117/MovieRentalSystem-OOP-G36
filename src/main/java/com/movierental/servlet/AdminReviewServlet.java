@@ -58,7 +58,9 @@ public class AdminReviewServlet extends HttpServlet {
 
         }
         catch (Exception e) {
-            throw new ServletException(  "Failed to initialize AdminReviewServlet", e   );
+            throw new ServletException(
+                    "Failed to initialize AdminReviewServlet", e   );
+
 
         }
     }
@@ -100,68 +102,102 @@ public class AdminReviewServlet extends HttpServlet {
 
         for (Movie movie : movies) {
 
-            movieMap.put( movie.getMovieId(),  movie );
-
+            movieMap.put(
+                    movie.getMovieId(),
+                    movie
+            );
         }
+
+
 
         // SEARCH PARAMETER
 
 
-        String search = request.getParameter( "search"   );
+        String search =
+                request.getParameter(
+                        "search"
+                );
+
 
         if (search == null) {
 
-            search =  "";
-
+            search =
+                    "";
         }
 
 
-        String searchText = search.trim().toLowerCase();
+        String searchText =
+                search
+                        .trim()
+                        .toLowerCase();
 
 
+        // =====================================================
         // RATING FILTER
+        // =====================================================
+
+        String ratingFilter =
+                request.getParameter(
+                        "rating"
+                );
 
 
-        String ratingFilter = request.getParameter("rating"  );
+        if (
+                ratingFilter == null
+                        ||
+                        ratingFilter.trim().isEmpty()
+        ) {
 
-        if ( ratingFilter == null ||ratingFilter.trim().isEmpty()    ) {
-
-            ratingFilter =  "all";
-
+            ratingFilter =
+                    "all";
         }
 
+
+        // =====================================================
         // FILTER REVIEWS
+        // =====================================================
 
+        List<Review> filteredReviews =
+                new ArrayList<>();
 
-        List<Review> filteredReviews =new ArrayList<>();
 
         for (Review review : allReviews) {
 
-
+            // =================================================
             // RATING MATCH
+            // =================================================
 
-            boolean ratingMatches =true;
+            boolean ratingMatches =
+                    true;
 
 
-
-            if ( !"all".equalsIgnoreCase(  ratingFilter    )
-
+            if (
+                    !"all".equalsIgnoreCase(
+                            ratingFilter
+                    )
             ) {
 
                 try {
 
-                    int selectedRating =Integer.parseInt( ratingFilter   );
+                    int selectedRating =
+                            Integer.parseInt(
+                                    ratingFilter
+                            );
 
-                    ratingMatches = review.getRating()
 
+                    ratingMatches =
+                            review.getRating()
                                     == selectedRating;
 
-                } catch (NumberFormatException e  ) {
+                } catch (
+                        NumberFormatException e
+                ) {
 
-                    ratingMatches =  true;
-
+                    ratingMatches =
+                            true;
                 }
             }
+
 
             if (!ratingMatches) {
 
@@ -169,103 +205,198 @@ public class AdminReviewServlet extends HttpServlet {
             }
 
 
+            // =================================================
             // SEARCH
+            // =================================================
+
+            boolean searchMatches =
+                    searchText.isEmpty();
 
 
-            boolean searchMatches = searchText.isEmpty();
+            User user =
+                    userMap.get(
+                            review.getUserId()
+                    );
 
-            User user =userMap.get( review.getUserId());
 
-
-            Movie movie =   movieMap.get( review.getMovieId() );
+            Movie movie =
+                    movieMap.get(
+                            review.getMovieId()
+                    );
 
 
             if (!searchText.isEmpty()) {
 
+                // ---------------------------------------------
                 // REVIEW ID
+                // ---------------------------------------------
 
-
-                if (  review.getReviewId() != null && review.getReviewId()   .toLowerCase() .contains(searchText  )
-
+                if (
+                        review.getReviewId() != null
+                                &&
+                                review.getReviewId()
+                                        .toLowerCase()
+                                        .contains(
+                                                searchText
+                                        )
                 ) {
 
-                    searchMatches = true;
-
+                    searchMatches =
+                            true;
                 }
 
+
+                // ---------------------------------------------
                 // USER ID
+                // ---------------------------------------------
 
-                if ( review.getUserId() != null  && review.getUserId().toLowerCase()  .contains( searchText)
-
+                if (
+                        review.getUserId() != null
+                                &&
+                                review.getUserId()
+                                        .toLowerCase()
+                                        .contains(
+                                                searchText
+                                        )
                 ) {
 
-                    searchMatches =true;
+                    searchMatches =
+                            true;
                 }
 
 
+                // ---------------------------------------------
                 // MOVIE ID
+                // ---------------------------------------------
 
-                if (review.getMovieId() != null  && review.getMovieId() .toLowerCase().contains( searchText )
-
+                if (
+                        review.getMovieId() != null
+                                &&
+                                review.getMovieId()
+                                        .toLowerCase()
+                                        .contains(
+                                                searchText
+                                        )
                 ) {
-                    searchMatches = true;
 
+                    searchMatches =
+                            true;
                 }
 
+
+                // ---------------------------------------------
                 // COMMENT
+                // ---------------------------------------------
 
-                if (   review.getComment() != null  &&review.getComment()  .toLowerCase()   .contains(  searchText )    ) {
+                if (
+                        review.getComment() != null
+                                &&
+                                review.getComment()
+                                        .toLowerCase()
+                                        .contains(
+                                                searchText
+                                        )
+                ) {
 
-                    searchMatches = true;
-
+                    searchMatches =
+                            true;
                 }
+
+
+                // ---------------------------------------------
                 // CUSTOMER NAME / EMAIL
+                // ---------------------------------------------
 
                 if (user != null) {
 
-                    if (  user.getName() != null   && user.getName() .toLowerCase()  .contains(  searchText  ) ) {
+                    if (
+                            user.getName() != null
+                                    &&
+                                    user.getName()
+                                            .toLowerCase()
+                                            .contains(
+                                                    searchText
+                                            )
+                    ) {
 
-                        searchMatches =  true;
-
+                        searchMatches =
+                                true;
                     }
 
 
-                    if ( user.getEmail() != null   &&user.getEmail()  .toLowerCase() .contains(searchText  )  ) {
+                    if (
+                            user.getEmail() != null
+                                    &&
+                                    user.getEmail()
+                                            .toLowerCase()
+                                            .contains(
+                                                    searchText
+                                            )
+                    ) {
 
-                        searchMatches =  true;
-
+                        searchMatches =
+                                true;
                     }
                 }
 
 
+                // ---------------------------------------------
                 // MOVIE TITLE
+                // ---------------------------------------------
 
                 if (movie != null) {
 
-                    if ( movie.getTitle() != null && movie.getTitle() .toLowerCase() .contains(    searchText )  ) {
+                    if (
+                            movie.getTitle() != null
+                                    &&
+                                    movie.getTitle()
+                                            .toLowerCase()
+                                            .contains(
+                                                    searchText
+                                            )
+                    ) {
 
-                        searchMatches = true;
+                        searchMatches =
+                                true;
                     }
-
                 }
             }
+
+
             if (searchMatches) {
 
-                filteredReviews.add( review );
-
+                filteredReviews.add(
+                        review
+                );
             }
         }
-        // REVIEW STATISTICS
 
-        int fiveStarCount =  0;
-        int fourStarCount = 0;
-        int threeStarCount = 0;
-        int twoStarCount =0;
-        int oneStarCount =   0;
+
+        // =====================================================
+        // REVIEW STATISTICS
+        // =====================================================
+
+        int fiveStarCount =
+                0;
+
+        int fourStarCount =
+                0;
+
+        int threeStarCount =
+                0;
+
+        int twoStarCount =
+                0;
+
+        int oneStarCount =
+                0;
+
 
         for (Review review : allReviews) {
 
-            switch (review.getRating()  ) {
+            switch (
+                    review.getRating()
+            ) {
 
                 case 5:
 
@@ -303,140 +434,303 @@ public class AdminReviewServlet extends HttpServlet {
             }
         }
 
+
+        // =====================================================
         // SEND DATA TO JSP
+        // =====================================================
 
-        request.setAttribute("reviews", filteredReviews    );
+        request.setAttribute(
+                "reviews",
+                filteredReviews
+        );
 
-        request.setAttribute("userMap",    userMap);
 
-        request.setAttribute(    "movieMap",   movieMap   );
+        request.setAttribute(
+                "userMap",
+                userMap
+        );
 
-        request.setAttribute( "search",    search   );
 
-        request.setAttribute("selectedRating",ratingFilter );
+        request.setAttribute(
+                "movieMap",
+                movieMap
+        );
 
-        request.setAttribute("totalReviewCount",  allReviews.size());
 
-        request.setAttribute( "filteredCount", filteredReviews.size()   );
+        request.setAttribute(
+                "search",
+                search
+        );
 
-        request.setAttribute("fiveStarCount",  fiveStarCount);
 
-        request.setAttribute("fourStarCount", fourStarCount    );
+        request.setAttribute(
+                "selectedRating",
+                ratingFilter
+        );
 
-        request.setAttribute("threeStarCount",  threeStarCount    );
 
-        request.setAttribute("twoStarCount", twoStarCount );
+        request.setAttribute(
+                "totalReviewCount",
+                allReviews.size()
+        );
 
-        request.setAttribute("oneStarCount", oneStarCount);
 
+        request.setAttribute(
+                "filteredCount",
+                filteredReviews.size()
+        );
+
+
+        request.setAttribute(
+                "fiveStarCount",
+                fiveStarCount
+        );
+
+
+        request.setAttribute(
+                "fourStarCount",
+                fourStarCount
+        );
+
+
+        request.setAttribute(
+                "threeStarCount",
+                threeStarCount
+        );
+
+
+        request.setAttribute(
+                "twoStarCount",
+                twoStarCount
+        );
+
+
+        request.setAttribute(
+                "oneStarCount",
+                oneStarCount
+        );
+
+
+        // =====================================================
         // FORWARD TO JSP
+        // =====================================================
 
-        request.getRequestDispatcher("/WEB-INF/views/admin-reviews.jsp"  ).forward(request,  response  );
-
+        request.getRequestDispatcher(
+                "/WEB-INF/views/admin-reviews.jsp"
+        ).forward(
+                request,
+                response
+        );
     }
 
+
+    // =========================================================
     // POST
+    // =========================================================
 
     @Override
-    protected void doPost( HttpServletRequest request,  HttpServletResponse response ) throws ServletException, IOException {
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws ServletException, IOException {
 
-        request.setCharacterEncoding(   "UTF-8"  );
+        request.setCharacterEncoding(
+                "UTF-8"
+        );
 
-        HttpSession session =request.getSession(false);
 
+        HttpSession session =
+                request.getSession(false);
+
+
+        // =====================================================
         // ADMIN SECURITY CHECK
+        // =====================================================
 
-        if (!checkAdminAccess(   session,request, response   )   ) {
+        if (
+                !checkAdminAccess(
+                        session,
+                        request,
+                        response
+                )
+        ) {
 
             return;
         }
 
-        String action = request.getParameter("action");
 
+        String action =
+                request.getParameter(
+                        "action"
+                );
+
+
+        // =====================================================
         // DELETE REVIEW
+        // =====================================================
 
-        if (  "delete".equalsIgnoreCase(   action   )   ) {
+        if (
+                "delete".equalsIgnoreCase(
+                        action
+                )
+        ) {
 
-            deleteReview(   request, response   );
+            deleteReview(
+                    request,
+                    response
+            );
 
             return;
         }
 
 
+        // =====================================================
         // INVALID ACTION
+        // =====================================================
 
-
-        response.sendRedirect(request.getContextPath()+ "/admin/reviews" );
-
+        response.sendRedirect(
+                request.getContextPath()
+                        + "/admin/reviews"
+        );
     }
 
+
+    // =========================================================
     // DELETE REVIEW
+    // =========================================================
 
     private void deleteReview(
             HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
 
-        String reviewId =  request.getParameter( "reviewId"  );
+        String reviewId =
+                request.getParameter(
+                        "reviewId"
+                );
 
-        if (  reviewId == null    ||    reviewId.trim().isEmpty() ) {
 
-            response.sendRedirect(request.getContextPath()  + "/admin/reviews"    );
+        if (
+                reviewId == null
+                        ||
+                        reviewId.trim().isEmpty()
+        ) {
+
+            response.sendRedirect(
+                    request.getContextPath()
+                            + "/admin/reviews"
+            );
 
             return;
         }
 
-        Review reviewToDelete =   null;
 
-        List<Review> reviews = reviewService   .getAllReviews();
+        Review reviewToDelete =
+                null;
+
+
+        List<Review> reviews =
+                reviewService
+                        .getAllReviews();
+
 
         for (Review review : reviews) {
 
-            if ( review.getReviewId() != null     && review.getReviewId()  .equals( reviewId    )  ) {
+            if (
+                    review.getReviewId() != null
+                            &&
+                            review.getReviewId()
+                                    .equals(
+                                            reviewId
+                                    )
+            ) {
 
-                reviewToDelete = review;
+                reviewToDelete =
+                        review;
 
                 break;
             }
         }
 
+
+        // =====================================================
         // DELETE IF FOUND
+        // =====================================================
 
         if (reviewToDelete != null) {
 
-            String movieId = reviewToDelete   .getMovieId();
+            String movieId =
+                    reviewToDelete
+                            .getMovieId();
 
-            boolean deleted = reviewService.deleteReview(  reviewId  );
+
+            boolean deleted =
+                    reviewService
+                            .deleteReview(
+                                    reviewId
+                            );
+
 
             // Recalculate movie rating after deletion
             if (deleted) {
 
-                updateMovieAverageRating(movieId  );
-
+                updateMovieAverageRating(
+                        movieId
+                );
             }
         }
 
-        response.sendRedirect(request.getContextPath() + "/admin/reviews" );
 
+        response.sendRedirect(
+                request.getContextPath()
+                        + "/admin/reviews"
+        );
     }
 
+
+    // =========================================================
     // UPDATE MOVIE AVERAGE RATING
+    // =========================================================
 
-    private void updateMovieAverageRating( String movieId) throws IOException {
+    private void updateMovieAverageRating(
+            String movieId
+    ) throws IOException {
 
-        Movie movie = movieService  .getMovieById(movieId );
+        Movie movie =
+                movieService
+                        .getMovieById(
+                                movieId
+                        );
+
+
         if (movie == null) {
 
             return;
         }
 
-        double averageRating =reviewService .calculateAverageRating(  movieId);
 
-        movie.setRating( averageRating );
+        double averageRating =
+                reviewService
+                        .calculateAverageRating(
+                                movieId
+                        );
 
-        movieService  .updateMovie(  movie  ); }
 
+        movie.setRating(
+                averageRating
+        );
+
+
+        movieService
+                .updateMovie(
+                        movie
+                );
+    }
+
+
+    // =========================================================
     // ADMIN SECURITY
+    // =========================================================
 
     private boolean checkAdminAccess(
             HttpSession session,
@@ -444,21 +738,47 @@ public class AdminReviewServlet extends HttpServlet {
             HttpServletResponse response
     ) throws IOException {
 
+        // =====================================================
         // LOGIN CHECK
+        // =====================================================
 
-        if ( session == null ||   session.getAttribute(   "loggedUser" ) == null    ) {
+        if (
+                session == null
+                        ||
+                        session.getAttribute(
+                                "loggedUser"
+                        ) == null
+        ) {
 
-            response.sendRedirect(request.getContextPath() + "/login"    );
+            response.sendRedirect(
+                    request.getContextPath()
+                            + "/login"
+            );
 
             return false;
         }
 
-        String role = (String)  session.getAttribute(  "role" );
 
-        if (   role == null     ||  !"ADMIN".equalsIgnoreCase(  role       )   ) {
 
-            response.sendRedirect(request.getContextPath()  + "/catalog"    );
+        String role =
+                (String)
+                        session.getAttribute(
+                                "role"
+                        );
 
+
+        if (
+                role == null
+                        ||
+                        !"ADMIN".equalsIgnoreCase(
+                                role
+                        )
+        ) {
+
+            response.sendRedirect(
+                    request.getContextPath()
+                            + "/catalog"
+            );
             return false;
         }
 
