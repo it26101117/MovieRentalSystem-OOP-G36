@@ -163,7 +163,6 @@ public class AdminReviewServlet extends HttpServlet {
                 }
             }
 
-
             if (!ratingMatches) {
 
                 continue;
@@ -306,7 +305,6 @@ public class AdminReviewServlet extends HttpServlet {
 
         // SEND DATA TO JSP
 
-
         request.setAttribute("reviews", filteredReviews    );
 
         request.setAttribute("userMap",    userMap);
@@ -424,7 +422,6 @@ public class AdminReviewServlet extends HttpServlet {
 
     // UPDATE MOVIE AVERAGE RATING
 
-
     private void updateMovieAverageRating( String movieId) throws IOException {
 
         Movie movie = movieService  .getMovieById(movieId );
@@ -440,7 +437,6 @@ public class AdminReviewServlet extends HttpServlet {
         movieService  .updateMovie(  movie  ); }
 
     // ADMIN SECURITY
-
 
     private boolean checkAdminAccess(
             HttpSession session,
