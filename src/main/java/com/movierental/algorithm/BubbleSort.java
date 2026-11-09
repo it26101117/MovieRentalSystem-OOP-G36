@@ -24,7 +24,7 @@ public class BubbleSort {
                 Movie currentMovie =sortedMovies.get(j);
                 Movie nextMovie = sortedMovies.get(j + 1);
 
-                //current ration is lower , next rating, swap the movie.
+                //rating compare
                 if ( currentMovie.getRating() < nextMovie.getRating()){
                     sortedMovies.set(j,nextMovie);
                     sortedMovies.set(j + 1, currentMovie);
@@ -32,7 +32,7 @@ public class BubbleSort {
                 }
             }
 
-            if (!swapped) {
+            if (!swapped) { //termination
                 break;
             }
 

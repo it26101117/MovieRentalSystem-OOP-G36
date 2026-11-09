@@ -30,7 +30,6 @@ public class ReviewServlet extends HttpServlet {
     private RentalService rentalService;
 
 
-    // =========================================================
     // INITIALIZE
     // =========================================================
 

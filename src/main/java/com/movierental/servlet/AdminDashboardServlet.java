@@ -58,7 +58,7 @@ public class AdminDashboardServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
 
      throws ServletException, IOException {
-        HttpSession session =request.getSession(false);
+        HttpSession session =request.getSession(false); //check login
 
         //Login check
         if ( session == null|| session.getAttribute("loggedUser" ) == null) {
