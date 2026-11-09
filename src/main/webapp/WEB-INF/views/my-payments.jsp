@@ -1,3 +1,4 @@
+```
 
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ page import="java.util.List,java.util.ArrayList,java.util.Comparator,java.util.Locale" %>
@@ -43,6 +44,8 @@
 
     String message = request.getAttribute("paymentMessage") == null
             ? "" : String.valueOf(request.getAttribute("paymentMessage"));
+    String rentalCsrfToken = request.getAttribute("rentalCsrfToken") == null
+            ? "" : String.valueOf(request.getAttribute("rentalCsrfToken"));
 
     List<Payment> payments = new ArrayList<>();
 
@@ -457,6 +460,8 @@
             gap: 14px;
         }
 
+        .cr-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+        .cr-activate-form { margin:0; }
         .cr-money {
             font-size: 19px;
             font-weight: 850;
@@ -585,9 +590,9 @@
                 flex-direction: column;
             }
 
-            .cr-foot .cr-btn {
-                width: 100%;
-            }
+            .cr-foot .cr-btn { width:100%; }
+            .cr-actions { width:100%; flex-direction:column; }
+            .cr-activate-form { width:100%; }
 
             .cr-info {
                 gap: 11px;
@@ -744,12 +749,14 @@
                 View My Rentals
             </a>
 
-            <% } else if (selected.isPaid()) { %>
-
-            <a class="cr-btn"
-               href="<%= esc(ctx) %>/rentals">
-                Go to Rental Activation
-            </a>
+            <% } else if (selected.isPaid() && !rentalCsrfToken.isEmpty()) { %>
+            <form method="post" action="<%= esc(ctx) %>/rentals" class="cr-activate-form">
+                <input type="hidden" name="action" value="rent">
+                <input type="hidden" name="paymentId" value="<%= esc(selected.getPaymentId()) %>">
+                <input type="hidden" name="movieId" value="<%= esc(selected.getMovieId()) %>">
+                <input type="hidden" name="rentalCsrfToken" value="<%= esc(rentalCsrfToken) %>">
+                <button type="submit" class="cr-btn">Activate Paid Rental</button>
+            </form>
 
             <% } else if (selected.isPending()) { %>
 
@@ -883,14 +890,21 @@
                         <%= esc(p.getFormattedAmount()) %>
                     </strong>
 
-                    <a class="cr-btn cr-btn-secondary"
-                       href="<%= esc(ctx) %>/payments?paymentId=<%= esc(p.getPaymentId()) %>">
-
-                        <%= p.isPaid() && !p.hasRental()
-                                ? "Activate / Details"
-                                : "View Payment" %>
-
-                    </a>
+                    <div class="cr-actions">
+                        <% if (p.isPaid() && !p.hasRental() && !rentalCsrfToken.isEmpty()) { %>
+                        <form method="post" action="<%= esc(ctx) %>/rentals" class="cr-activate-form">
+                            <input type="hidden" name="action" value="rent">
+                            <input type="hidden" name="paymentId" value="<%= esc(p.getPaymentId()) %>">
+                            <input type="hidden" name="movieId" value="<%= esc(p.getMovieId()) %>">
+                            <input type="hidden" name="rentalCsrfToken" value="<%= esc(rentalCsrfToken) %>">
+                            <button class="cr-btn" type="submit">Activate Rental</button>
+                        </form>
+                        <% } %>
+                        <a class="cr-btn cr-btn-secondary"
+                           href="<%= esc(ctx) %>/payments?paymentId=<%= esc(p.getPaymentId()) %>">
+                            View Payment
+                        </a>
+                    </div>
 
                 </div>
 
