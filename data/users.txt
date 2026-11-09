@@ -1,2 +1,4 @@
 U001|chathuranga|anipun142@gmail.com|123456|0743000918|CUSTOMER
-U002|nipun akash|anipun141@gmail.com|123456|074488908|ADMIN
+U002|nipun akash|anipun141@gmail.com|12345|074488908|ADMIN
+U003|akash|dulanjana123@gmail.com|147852|0725698436|CUSTOMER
+U004|eshadi|eshadi123@gmail.com|852369|074322569|CUSTOMER

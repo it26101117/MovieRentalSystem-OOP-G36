@@ -3,6 +3,7 @@ package com.movierental.servlet;
 import com.movierental.model.Payment;
 import com.movierental.service.PayHereGateway;
 import com.movierental.service.PaymentService;
+import com.movierental.service.PaidRentalActivationService;
 import com.movierental.util.DataPathUtil;
 
 import jakarta.servlet.ServletException;
@@ -117,6 +118,15 @@ public class PayHereNotifyServlet extends HttpServlet {
                     orderId, gatewayPaymentId, reportedAmount,
                     currency, statusCode
             );
+
+            if (updatedPayment.isPaid()) {
+                try {
+                    new PaidRentalActivationService().activate(updatedPayment.getPaymentId());
+                } catch (Exception activationFailure) {
+                    getServletContext().log("Verified PayHere payment saved but rental activation failed: " +
+                            updatedPayment.getPaymentId(), activationFailure);
+                }
+            }
 
             if ("CHARGEBACK".equalsIgnoreCase(updatedPayment.getPaymentStatus())) {
                 getServletContext().log(
