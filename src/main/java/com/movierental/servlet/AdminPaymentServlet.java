@@ -21,6 +21,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
 
+//mapping and inheritance
 @WebServlet(
         name = "AdminPaymentServlet",
         urlPatterns = {"/admin/payments"}
@@ -36,8 +37,6 @@ public class AdminPaymentServlet extends HttpServlet {
     private final SecureRandom secureRandom = new SecureRandom();
 
     // INITIALIZE PAYMENT SERVICE
-
-
     @Override
     public void init() throws ServletException {
         try {
