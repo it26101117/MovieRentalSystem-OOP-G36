@@ -53,7 +53,7 @@ public class AdminDashboardServlet extends HttpServlet {
 
         }
     }
-    //Getters
+    //browser incoming Http GET request handling (polymorphism)
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
 
@@ -66,7 +66,7 @@ public class AdminDashboardServlet extends HttpServlet {
             return;
         }
 
-        //Check Admin Access
+        //Check Admin Access (check loging user role is admin or not)
         String role = (String)session.getAttribute("role" );
 
         if (role == null|| !"ADMIN".equalsIgnoreCase(role)){
@@ -74,7 +74,7 @@ public class AdminDashboardServlet extends HttpServlet {
             return;
         }
 
-        List<Movie> movies =movieService.getAllMovies();
+        List<Movie> movies =movieService.getAllMovies(); //Liist is java collection framework interface
         List<User> users = userService .getAllUsers();
         List<Rental> rentals =rentalService.getAllRentals();
         List<Review> reviews =reviewService.getAllReviews();
@@ -82,7 +82,7 @@ public class AdminDashboardServlet extends HttpServlet {
         //Movie Count
         int movieCount = movies.size();
 
-        //Customer Count
+        //Customer Count ( in here use polymophism )
         int customerCount = 0;
 
         for (User user : users) {
