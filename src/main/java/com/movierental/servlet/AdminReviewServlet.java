@@ -90,31 +90,16 @@ public class AdminReviewServlet extends HttpServlet {
 
 
         if (search == null) {
-
-            search =
-                    "";
+            search = "";
         }
 
+        String searchText = search.trim().toLowerCase();
 
-        String searchText =
-                search
-                        .trim()
-                        .toLowerCase();
-
-
-        // =====================================================
         // RATING FILTER
-        // =====================================================
-
-        String ratingFilter =
-                request.getParameter(
-                        "rating"
-                );
+        String ratingFilter = request.getParameter("rating");
 
 
-        if (
-                ratingFilter == null || ratingFilter.trim().isEmpty()
-        ) {
+        if (ratingFilter == null || ratingFilter.trim().isEmpty()) {
             ratingFilter = "all";
         }
 
@@ -142,561 +127,197 @@ public class AdminReviewServlet extends HttpServlet {
             Movie movie = movieMap.get(review.getMovieId());
 
             if (!searchText.isEmpty()) {
-                // ---------------------------------------------
                 // REVIEW ID
-                // ---------------------------------------------
 
-                if (
-                        review.getReviewId() != null
-                                &&
-                                review.getReviewId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
-
-                    searchMatches =
-                            true;
+                if (review.getReviewId() != null && review.getReviewId().toLowerCase().contains(searchText)) {
+                    searchMatches = true;
                 }
 
 
-                // ---------------------------------------------
                 // USER ID
-                // ---------------------------------------------
 
-                if (
-                        review.getUserId() != null
-                                &&
-                                review.getUserId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
-
-                    searchMatches =
-                            true;
+                if (review.getUserId() != null && review.getUserId().toLowerCase().contains(searchText)) {
+                    searchMatches = true;
                 }
 
-
-                // ---------------------------------------------
-                // MOVIE ID
-                // ---------------------------------------------
-
-                if (
-                        review.getMovieId() != null
-                                &&
-                                review.getMovieId()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
-
-                    searchMatches =
-                            true;
+                //Movie ID
+                if (review.getMovieId() != null && review.getMovieId().toLowerCase().contains(searchText)) {
+                    searchMatches = true;
                 }
 
-
-                // ---------------------------------------------
-                // COMMENT
-                // ---------------------------------------------
-
-                if (
-                        review.getComment() != null
-                                &&
-                                review.getComment()
-                                        .toLowerCase()
-                                        .contains(
-                                                searchText
-                                        )
-                ) {
-
-                    searchMatches =
-                            true;
+                if (review.getComment() != null && review.getComment().toLowerCase().contains(searchText)) {
+                    searchMatches = true;
                 }
 
-
-                // ---------------------------------------------
                 // CUSTOMER NAME / EMAIL
-                // ---------------------------------------------
-
                 if (user != null) {
-
-                    if (
-                            user.getName() != null
-                                    &&
-                                    user.getName()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
-
-                        searchMatches =
-                                true;
+                    if (user.getName() != null && user.getName().toLowerCase().contains(searchText)) {
+                        searchMatches = true;
                     }
 
-
-                    if (
-                            user.getEmail() != null
-                                    &&
-                                    user.getEmail()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
-
-                        searchMatches =
-                                true;
+                    if (user.getEmail() != null && user.getEmail().toLowerCase().contains(searchText)) {
+                        searchMatches = true;
                     }
                 }
 
-
-                // ---------------------------------------------
                 // MOVIE TITLE
-                // ---------------------------------------------
-
                 if (movie != null) {
-
-                    if (
-                            movie.getTitle() != null
-                                    &&
-                                    movie.getTitle()
-                                            .toLowerCase()
-                                            .contains(
-                                                    searchText
-                                            )
-                    ) {
-
-                        searchMatches =
-                                true;
+                    if (movie.getTitle() != null && movie.getTitle().toLowerCase().contains(searchText)) {
+                        searchMatches = true;
                     }
                 }
             }
 
 
             if (searchMatches) {
-
-                filteredReviews.add(
-                        review
-                );
+                filteredReviews.add(review);
             }
         }
 
 
-        // =====================================================
-        // REVIEW STATISTICS
-        // =====================================================
-
-        int fiveStarCount =
-                0;
-
-        int fourStarCount =
-                0;
-
-        int threeStarCount =
-                0;
-
-        int twoStarCount =
-                0;
-
-        int oneStarCount =
-                0;
-
-
+        int fiveStarCount = 0;
+        int fourStarCount = 0;
+        int threeStarCount = 0;
+        int twoStarCount = 0;
+        int oneStarCount = 0;
         for (Review review : allReviews) {
-
-            switch (
-                    review.getRating()
-            ) {
-
+            switch (review.getRating()) {
                 case 5:
-
                     fiveStarCount++;
                     break;
 
-
                 case 4:
-
                     fourStarCount++;
                     break;
 
-
                 case 3:
-
                     threeStarCount++;
                     break;
 
-
                 case 2:
-
                     twoStarCount++;
                     break;
 
-
                 case 1:
-
                     oneStarCount++;
                     break;
 
-
                 default:
-
                     break;
             }
         }
 
 
-        // =====================================================
         // SEND DATA TO JSP
-        // =====================================================
-
-        request.setAttribute(
-                "reviews",
-                filteredReviews
-        );
-
-
-        request.setAttribute(
-                "userMap",
-                userMap
-        );
-
-
-        request.setAttribute(
-                "movieMap",
-                movieMap
-        );
+        request.setAttribute("reviews", filteredReviews);
+        request.setAttribute("userMap", userMap);
+        request.setAttribute("movieMap", movieMap);
+        request.setAttribute("search", search);
+        request.setAttribute("selectedRating", ratingFilter);
+        request.setAttribute("totalReviewCount", allReviews.size());
+        request.setAttribute("filteredCount", filteredReviews.size());
+        request.setAttribute("fiveStarCount", fiveStarCount);
+        request.setAttribute("fourStarCount", fourStarCount);
+        request.setAttribute("threeStarCount", threeStarCount);
+        request.setAttribute("twoStarCount", twoStarCount);
+        request.setAttribute("oneStarCount", oneStarCount);
 
 
-        request.setAttribute(
-                "search",
-                search
-        );
-
-
-        request.setAttribute(
-                "selectedRating",
-                ratingFilter
-        );
-
-
-        request.setAttribute(
-                "totalReviewCount",
-                allReviews.size()
-        );
-
-
-        request.setAttribute(
-                "filteredCount",
-                filteredReviews.size()
-        );
-
-
-        request.setAttribute(
-                "fiveStarCount",
-                fiveStarCount
-        );
-
-
-        request.setAttribute(
-                "fourStarCount",
-                fourStarCount
-        );
-
-
-        request.setAttribute(
-                "threeStarCount",
-                threeStarCount
-        );
-
-
-        request.setAttribute(
-                "twoStarCount",
-                twoStarCount
-        );
-
-
-        request.setAttribute(
-                "oneStarCount",
-                oneStarCount
-        );
-
-
-        // =====================================================
         // FORWARD TO JSP
-        // =====================================================
-
-        request.getRequestDispatcher(
-                "/WEB-INF/views/admin-reviews.jsp"
-        ).forward(
-                request,
-                response
-        );
+        request.getRequestDispatcher("/WEB-INF/views/admin-reviews.jsp").forward(request, response);
     }
 
 
-    // =========================================================
     // POST
-    // =========================================================
-
     @Override
-    protected void doPost(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
+        HttpSession session = request.getSession(false);
 
-        request.setCharacterEncoding(
-                "UTF-8"
-        );
-
-
-        HttpSession session =
-                request.getSession(false);
-
-
-        // =====================================================
         // ADMIN SECURITY CHECK
-        // =====================================================
-
-        if (
-                !checkAdminAccess(
-                        session,
-                        request,
-                        response
-                )
-        ) {
-
+        if (!checkAdminAccess(session, request, response)) {
             return;
         }
 
-
-        String action =
-                request.getParameter(
-                        "action"
-                );
+        String action = request.getParameter("action");
 
 
-        // =====================================================
         // DELETE REVIEW
-        // =====================================================
-
-        if (
-                "delete".equalsIgnoreCase(
-                        action
-                )
-        ) {
-
-            deleteReview(
-                    request,
-                    response
-            );
-
+        if ("delete".equalsIgnoreCase(action)) {
+            deleteReview(request, response);
             return;
         }
 
 
-        // =====================================================
         // INVALID ACTION
-        // =====================================================
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/admin/reviews"
-        );
+        response.sendRedirect(request.getContextPath() + "/admin/reviews");
     }
 
 
-    // =========================================================
     // DELETE REVIEW
-    // =========================================================
-
-    private void deleteReview(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws IOException {
-
-        String reviewId =
-                request.getParameter(
-                        "reviewId"
-                );
-
-
-        if (
-                reviewId == null
-                        ||
-                        reviewId.trim().isEmpty()
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/admin/reviews"
-            );
-
+    private void deleteReview(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String reviewId = request.getParameter("reviewId");
+        if (reviewId == null || reviewId.trim().isEmpty()) {
+            response.sendRedirect(request.getContextPath() + "/admin/reviews");
             return;
         }
 
+        Review reviewToDelete = null;
 
-        Review reviewToDelete =
-                null;
-
-
-        List<Review> reviews =
-                reviewService
-                        .getAllReviews();
-
+        List<Review> reviews = reviewService.getAllReviews();
 
         for (Review review : reviews) {
-
-            if (
-                    review.getReviewId() != null
-                            &&
-                            review.getReviewId()
-                                    .equals(
-                                            reviewId
-                                    )
-            ) {
-
-                reviewToDelete =
-                        review;
-
+            if (review.getReviewId() != null && review.getReviewId().equals(reviewId)) {
+                reviewToDelete = review;
                 break;
             }
         }
 
 
-        // =====================================================
-        // DELETE IF FOUND
-        // =====================================================
-
         if (reviewToDelete != null) {
+            String movieId = reviewToDelete.getMovieId();
 
-            String movieId =
-                    reviewToDelete
-                            .getMovieId();
-
-
-            boolean deleted =
-                    reviewService
-                            .deleteReview(
-                                    reviewId
-                            );
-
+            boolean deleted = reviewService.deleteReview(reviewId);
 
             // Recalculate movie rating after deletion
             if (deleted) {
-
-                updateMovieAverageRating(
-                        movieId
-                );
+                updateMovieAverageRating(movieId);
             }
         }
 
-
-        response.sendRedirect(
-                request.getContextPath()
-                        + "/admin/reviews"
-        );
+        response.sendRedirect(request.getContextPath() + "/admin/reviews");
     }
 
 
-    // =========================================================
     // UPDATE MOVIE AVERAGE RATING
-    // =========================================================
-
-    private void updateMovieAverageRating(
-            String movieId
+    private void updateMovieAverageRating(String movieId
     ) throws IOException {
-
-        Movie movie =
-                movieService
-                        .getMovieById(
-                                movieId
-                        );
-
-
+        Movie movie = movieService.getMovieById(movieId);
         if (movie == null) {
-
             return;
         }
 
-
-        double averageRating =
-                reviewService
-                        .calculateAverageRating(
-                                movieId
-                        );
-
-
-        movie.setRating(
-                averageRating
-        );
-
-
-        movieService
-                .updateMovie(
-                        movie
-                );
+        double averageRating = reviewService.calculateAverageRating(movieId);
+        movie.setRating(averageRating);
+        movieService.updateMovie(movie);
     }
 
-
-    // =========================================================
     // ADMIN SECURITY
-    // =========================================================
+    private boolean checkAdminAccess(HttpSession session, HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    private boolean checkAdminAccess(
-            HttpSession session,
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws IOException {
-
-        // =====================================================
         // LOGIN CHECK
-        // =====================================================
-
-        if (
-                session == null
-                        ||
-                        session.getAttribute(
-                                "loggedUser"
-                        ) == null
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/login"
-            );
-
+        if (session == null || session.getAttribute("loggedUser") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return false;
         }
 
+        String role = (String) session.getAttribute("role");
 
 
-        String role =
-                (String)
-                        session.getAttribute(
-                                "role"
-                        );
-
-
-        if (
-                role == null
-                        ||
-                        !"ADMIN".equalsIgnoreCase(
-                                role
-                        )
-        ) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                            + "/catalog"
-            );
+        if (role == null || !"ADMIN".equalsIgnoreCase(role)) {
+            response.sendRedirect(request.getContextPath() + "/catalog");
             return false;
         }
-
         return true;
     }
 }
